@@ -1,0 +1,162 @@
+starting benchmark sweep on GPU: a100
+model: ./Llama-3.2-1B
+output directory: results/single-gpu/a100
+========================================
+PREFILL SWEEP
+running: ISL=128, OSL=128, batch=1, tag=short-prefill
+
+Throughput: 2.23 requests/s, 571.21 total tokens/s, 285.60 output tokens/s
+Total num prompt tokens:  12800
+Total num output tokens:  12800
+completed: results/single-gpu/a100/run_isl128_osl128_batch1_throughput.json
+
+Avg latency: 0.4866788656916469 seconds
+10% percentile latency: 0.48511204090900717 seconds
+25% percentile latency: 0.4853885637712665 seconds
+50% percentile latency: 0.4860584274865687 seconds
+75% percentile latency: 0.4868193862494081 seconds
+90% percentile latency: 0.4898516510613263 seconds
+99% percentile latency: 0.4918397090910003 seconds
+completed: results/single-gpu/a100/run_isl128_osl128_batch1_latency.json
+---
+running: ISL=512, OSL=128, batch=1, tag=medium-prefill
+
+Throughput: 2.22 requests/s, 1420.84 total tokens/s, 284.17 output tokens/s
+Total num prompt tokens:  51200
+Total num output tokens:  12800
+completed: results/single-gpu/a100/run_isl512_osl128_batch1_throughput.json
+
+Avg latency: 0.5300318158386896 seconds
+10% percentile latency: 0.5290851651225239 seconds
+25% percentile latency: 0.5295993299805559 seconds
+50% percentile latency: 0.5300583799835294 seconds
+75% percentile latency: 0.5305603163433261 seconds
+90% percentile latency: 0.5310303521575406 seconds
+99% percentile latency: 0.5325967225548811 seconds
+completed: results/single-gpu/a100/run_isl512_osl128_batch1_latency.json
+---
+
+running: ISL=2048, OSL=128, batch=1, tag=long-prefill
+
+Throughput: 2.09 requests/s, 4551.14 total tokens/s, 267.71 output tokens/s
+Total num prompt tokens:  204800
+Total num output tokens:  12800
+completed: results/single-gpu/a100/run_isl2048_osl128_batch1_throughput.json
+
+Avg latency: 0.6998398605578889 seconds
+10% percentile latency: 0.6970860618865118 seconds
+25% percentile latency: 0.6987696510041133 seconds
+50% percentile latency: 0.7002001645741984 seconds
+75% percentile latency: 0.7010932141565718 seconds
+90% percentile latency: 0.701865045982413 seconds
+99% percentile latency: 0.7048316268948838 seconds
+completed: results/single-gpu/a100/run_isl2048_osl128_batch1_latency.json
+---
+
+DECODE SWEEP
+running: ISL=512, OSL=256, batch=1, tag=medium-decode
+
+Throughput: 1.09 requests/s, 836.51 total tokens/s, 278.84 output tokens/s
+Total num prompt tokens:  51200
+Total num output tokens:  25600
+completed: results/single-gpu/a100/run_isl512_osl256_batch1_throughput.json
+
+Avg latency: 1.0290358845765393 seconds
+10% percentile latency: 1.0153419440146536 seconds
+25% percentile latency: 1.0201395979966037 seconds
+50% percentile latency: 1.025712633621879 seconds
+75% percentile latency: 1.0428609787486494 seconds
+90% percentile latency: 1.0445494137471543 seconds
+99% percentile latency: 1.048409514403902 seconds
+completed: results/single-gpu/a100/run_isl512_osl256_batch1_latency.json
+---
+
+running: ISL=512, OSL=512, batch=1, tag=long-decode
+
+Throughput: 0.55 requests/s, 567.50 total tokens/s, 283.75 output tokens/s
+Total num prompt tokens:  51200
+Total num output tokens:  51200
+completed: results/single-gpu/a100/run_isl512_osl512_batch1_throughput.json
+
+Avg latency: 2.0134812513987224 seconds
+10% percentile latency: 1.998634468927048 seconds
+25% percentile latency: 2.004953609080985 seconds
+50% percentile latency: 2.0108312545344234 seconds
+75% percentile latency: 2.0172047181986272 seconds
+90% percentile latency: 2.037540488131344 seconds
+99% percentile latency: 2.041837876033969 seconds
+completed: results/single-gpu/a100/run_isl512_osl512_batch1_latency.json
+---
+
+running: ISL=512, OSL=1024, batch=1, tag=extreme-decode
+
+Throughput: 0.28 requests/s, 425.41 total tokens/s, 283.60 output tokens/s
+Total num prompt tokens:  51200
+Total num output tokens:  102400
+completed: results/single-gpu/a100/run_isl512_osl1024_batch1_throughput.json
+
+Avg latency: 4.034312198854362 seconds
+10% percentile latency: 3.998820149991661 seconds
+25% percentile latency: 4.017118534888141 seconds
+50% percentile latency: 4.038566116592847 seconds
+75% percentile latency: 4.052575555746444 seconds
+90% percentile latency: 4.057183191133663 seconds
+99% percentile latency: 4.071446177307516 seconds
+completed: results/single-gpu/a100/run_isl512_osl1024_batch1_latency.json
+---
+
+HEAVY WORKLOAD
+running: ISL=2048, OSL=512, batch=1, tag=heavy
+
+Throughput: 0.54 requests/s, 1375.87 total tokens/s, 275.17 output tokens/s
+Total num prompt tokens:  204800
+Total num output tokens:  51200
+completed: results/single-gpu/a100/run_isl2048_osl512_batch1_throughput.json
+
+Avg latency: 2.2972613612810773 seconds
+10% percentile latency: 2.2940476575633513 seconds
+25% percentile latency: 2.2958559034159407 seconds
+50% percentile latency: 2.297439164016396 seconds
+75% percentile latency: 2.299350390501786 seconds
+90% percentile latency: 2.3005852742819117 seconds
+99% percentile latency: 2.3032928174734115 seconds
+completed: results/single-gpu/a100/run_isl2048_osl512_batch1_latency.json
+---
+
+BATCHING SWEEP
+running: ISL=512, OSL=128, batch=8, tag=batch-8
+
+Throughput: 11.24 requests/s, 7195.85 total tokens/s, 1439.17 output tokens/s
+Total num prompt tokens:  51200
+Total num output tokens:  12800
+completed: results/single-gpu/a100/run_isl512_osl128_batch8_throughput.json
+
+Avg latency: 0.533144248307993 seconds
+10% percentile latency: 0.5284755598986521 seconds
+25% percentile latency: 0.5295526250847615 seconds
+50% percentile latency: 0.532423245953396 seconds
+75% percentile latency: 0.5365997431799769 seconds
+90% percentile latency: 0.5395460130413994 seconds
+99% percentile latency: 0.5415127968508751 seconds
+completed: results/single-gpu/a100/run_isl512_osl128_batch8_latency.json
+---
+
+running: ISL=512, OSL=128, batch=16, tag=batch-16
+
+Throughput: 15.44 requests/s, 9882.28 total tokens/s, 1976.46 output tokens/s
+Total num prompt tokens:  51200
+Total num output tokens:  12800
+completed: results/single-gpu/a100/run_isl512_osl128_batch16_throughput.json
+
+Avg latency: 0.5436130677582696 seconds
+10% percentile latency: 0.5381669676164165 seconds
+25% percentile latency: 0.5400343523360789 seconds
+50% percentile latency: 0.5420035260031 seconds
+75% percentile latency: 0.5447413499932736 seconds
+90% percentile latency: 0.5485767912119627 seconds
+99% percentile latency: 0.5655111792241223 seconds
+completed: results/single-gpu/a100/run_isl512_osl128_batch16_latency.json
+---
+========================================
+benchmark completed!
+results saved to: results/single-gpu/a100
