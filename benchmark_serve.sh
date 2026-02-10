@@ -4,6 +4,7 @@
 # CUDA_VISIBLE_DEVICES=3 vllm serve "./Llama-3.2-1B" --port 8000
 
 MODEL="./Llama-3.2-1B"
+GPU_ID=3
 OUTDIR="results/single-gpu/v100/"
 mkdir -p $OUTDIR
 
@@ -18,7 +19,7 @@ run_serve_bench() {
   echo "running: ISL=$ISL, OSL=$OSL ($TAG)"
   echo "========================================"
   
-  CUDA_VISIBLE_DEVICES=3 vllm bench serve \
+  CUDA_VISIBLE_DEVICES=$GPU_ID vllm bench serve \
     --backend openai \
     --model $MODEL \
     --dataset-name random \
