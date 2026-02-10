@@ -13,20 +13,31 @@ run_bench() {
   BATCH=$3
   TAG=$4
   
-  FILENAME="${OUTDIR}/run_isl${ISL}_osl${OSL}_batch${BATCH}.json"
+  FILENAME_THROUGHPUT="${OUTDIR}/run_isl${ISL}_osl${OSL}_batch${BATCH}_throughput.json"
+  FILENAME_LATENCY="${OUTDIR}/run_isl${ISL}_osl${OSL}_batch${BATCH}_latency.json"
   
   echo "running: ISL=$ISL, OSL=$OSL, batch=$BATCH, tag=$TAG"
   
+  # run bench throughput
   CUDA_VISIBLE_DEVICES=$GPU_ID vllm bench throughput \
     --model $MODEL \
     --input-len $ISL \
     --output-len $OSL \
-    --num-prompts 500 \
+    --num-prompts 100 \
     --max-num-seqs $BATCH \
     --gpu-memory-utilization 0.85 \
-    --output-json $FILENAME
-  
-  echo "completed: $FILENAME"
+    --output-json $FILENAME_THROUGHPUT
+  echo "completed: $FILENAME_THROUGHPUT"
+
+  # run bench latency
+  CUDA_VISIBLE_DEVICES=$GPU_ID vllm bench latency \
+    --model $MODEL \
+    --input-len $ISL \
+    --output-len $OSL \
+    --output-json $FILENAME_LATENCY
+
+  echo "completed: $FILENAME_LATENCY"
+
   echo "---"
 }
 
@@ -59,3 +70,5 @@ run_bench 512 128 16 "batch-16"
 echo "========================================"
 echo "benchmark completed!"
 echo "results saved to: $OUTDIR"
+
+
