@@ -1,0 +1,102 @@
+[
+    {
+        "random_input_len": 128,
+        "random_output_len": 128
+    },
+    {
+        "random_input_len": 128,
+        "random_output_len": 256
+    },
+    {
+        "random_input_len": 128,
+        "random_output_len": 512
+    },
+    {
+        "random_input_len": 128,
+        "random_output_len": 1024
+    },
+    {
+        "random_input_len": 128,
+        "random_output_len": 2048
+    },
+    {
+        "random_input_len": 256,
+        "random_output_len": 128
+    },
+    {
+        "random_input_len": 256,
+        "random_output_len": 256
+    },
+    {
+        "random_input_len": 256,
+        "random_output_len": 512
+    },
+    {
+        "random_input_len": 256,
+        "random_output_len": 1024
+    },
+    {
+        "random_input_len": 256,
+        "random_output_len": 2048
+    },
+    {
+        "random_input_len": 512,
+        "random_output_len": 128
+    },
+    {
+        "random_input_len": 512,
+        "random_output_len": 256
+    },
+    {
+        "random_input_len": 512,
+        "random_output_len": 512
+    },
+    {
+        "random_input_len": 512,
+        "random_output_len": 1024
+    },
+    {
+        "random_input_len": 512,
+        "random_output_len": 2048
+    },
+    {
+        "random_input_len": 1024,
+        "random_output_len": 128
+    },
+    {
+        "random_input_len": 1024,
+        "random_output_len": 256
+    },
+    {
+        "random_input_len": 1024,
+        "random_output_len": 512
+    },
+    {
+        "random_input_len": 1024,
+        "random_output_len": 1024
+    },
+    {
+        "random_input_len": 1024,
+        "random_output_len": 2048
+    },
+    {
+        "random_input_len": 2048,
+        "random_output_len": 128
+    },
+    {
+        "random_input_len": 2048,
+        "random_output_len": 256
+    },
+    {
+        "random_input_len": 2048,
+        "random_output_len": 512
+    },
+    {
+        "random_input_len": 2048,
+        "random_output_len": 1024
+    },
+    {
+        "random_input_len": 2048,
+        "random_output_len": 2048
+    }
+]
