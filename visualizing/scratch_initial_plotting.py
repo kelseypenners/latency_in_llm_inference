@@ -191,7 +191,7 @@ for i in range(len(isl)):
                  shade=False,
                  color='blue')
 
-# Axis labels
+# axis labels
 ax.set_xticks(np.arange(len(isl)))
 ax.set_xticklabels(isl)
 
@@ -203,66 +203,3 @@ ax.set_ylabel("Output Sequence Length")
 ax.set_zlabel("Throughput")
 
 plt.show()
-
-# %%
-
-# Load data
-a100_data = serve_df[serve_df['GPU'] == 'a100'].copy()
-v100_data = serve_df[serve_df['GPU'] == 'v100'].copy()
-
-
-fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-
-# Top left: A100 TTFT heatmap
-ax1 = axes[0, 0]
-ttft_pivot_a100 = a100_data.pivot_table(values='TTFT mean', index='ISL', columns='OSL')
-sns.heatmap(ttft_pivot_a100, annot=True, fmt='.0f', cmap='Greens', 
-            cbar_kws={'label': 'TTFT (ms)'}, ax=ax1, linewidths=2, linecolor='white',
-            annot_kws={'fontsize': 12, 'fontweight': 'bold'})
-ax1.set_xlabel('OSl', fontweight='bold', fontsize=13)
-ax1.set_ylabel('ISL', fontweight='bold', fontsize=13)
-ax1.set_title('A100: Time to First Token', fontweight='bold', fontsize=14)
-ax1.set_xticklabels(ax1.get_xticklabels(), fontsize=11)
-ax1.set_yticklabels(ax1.get_yticklabels(), rotation=0, fontsize=11)
-
-# Top right: A100 ITL heatmap
-ax2 = axes[0, 1]
-itl_pivot_a100 = a100_data.pivot_table(values='ITL mean', index='ISL', columns='OSL')
-sns.heatmap(itl_pivot_a100, annot=True, fmt='.1f', cmap='Blues',
-            cbar_kws={'label': 'ITL (ms)'}, ax=ax2, linewidths=2, linecolor='white',
-            annot_kws={'fontsize': 12, 'fontweight': 'bold'})
-ax2.set_xlabel('OSL', fontweight='bold', fontsize=13)
-ax2.set_ylabel('ISL', fontweight='bold', fontsize=13)
-ax2.set_title('A100: Inter-Token Latency', fontweight='bold', fontsize=14)
-ax2.set_xticklabels(ax2.get_xticklabels(), fontsize=11)
-ax2.set_yticklabels(ax2.get_yticklabels(), rotation=0, fontsize=11)
-
-# Bottom left: V100 TTFT heatmap
-ax3 = axes[1, 0]
-ttft_pivot_v100 = v100_data.pivot_table(values='TTFT mean', index='ISL', columns='OSL')
-sns.heatmap(ttft_pivot_v100, annot=True, fmt='.0f', cmap='Greens',
-            cbar_kws={'label': 'TTFT (ms)'}, ax=ax3, linewidths=2, linecolor='white',
-            annot_kws={'fontsize': 12, 'fontweight': 'bold'})
-ax3.set_xlabel('OSL', fontweight='bold', fontsize=13)
-ax3.set_ylabel('ISL', fontweight='bold', fontsize=13)
-ax3.set_title('V100: Time to First Token', fontweight='bold', fontsize=14)
-ax3.set_xticklabels(ax3.get_xticklabels(), fontsize=11)
-ax3.set_yticklabels(ax3.get_yticklabels(), rotation=0, fontsize=11)
-
-# Bottom right: V100 ITL heatmap
-ax4 = axes[1, 1]
-itl_pivot_v100 = v100_data.pivot_table(values='ITL mean', index='ISL', columns='OSL')
-sns.heatmap(itl_pivot_v100, annot=True, fmt='.1f', cmap='Blues',
-            cbar_kws={'label': 'ITL (ms)'}, ax=ax4, linewidths=2, linecolor='white',
-            annot_kws={'fontsize': 12, 'fontweight': 'bold'})
-ax4.set_xlabel('OSL', fontweight='bold', fontsize=13)
-ax4.set_ylabel('ISL', fontweight='bold', fontsize=13)
-ax4.set_title('V100: Inter-Token Latency', fontweight='bold', fontsize=14)
-ax4.set_xticklabels(ax4.get_xticklabels(), fontsize=11)
-ax4.set_yticklabels(ax4.get_yticklabels(), rotation=0, fontsize=11)
-
-plt.suptitle('GPU Comparison: ISL/OSL Impact on Performance Metrics', 
-             fontsize=16, fontweight='bold', y=0.995)
-plt.tight_layout()
-
-# %%
