@@ -158,15 +158,15 @@ def get_results_sweep(results_dir):
 
     all_results = []
     # parse all summary files in result dir
-    for file in results_dir.glob('summary*.json'):
+    for file in results_dir.rglob('summary*.json'):
         result = parse_sweep_summary(file)
         for run in result:
             # add gpu_type to run summary
             run["gpu_type"] = gpu_type
         all_results.extend(result)
-
     # sort dataframe by gpu_type, input, and output lengths
     all_results_df = pd.DataFrame(all_results)
+    print(all_results_df)
     all_results_df = all_results_df.sort_values(["gpu_type", 
                         "random_input_len", "random_output_len"])
     
@@ -206,7 +206,7 @@ def average_sweep_results(sweep_df):
     return averaged_sweep
     
 def save_results_sweep(gpu_dirs):
-    """ save sweep data as csv, also saves averaged across runs csv"""
+    """ parses and saves sweep data as csv, also saves averaged across runs csv"""
     output_dir = Path(gpu_dirs[0]).parent
     all_gpu_dfs = []
 
@@ -226,4 +226,4 @@ def save_results_sweep(gpu_dirs):
 
 if __name__ == "__main__":
 
-    save_results_sweep(['./results/single-gpu/11-02-2026/a100'])
+    save_results_sweep(['./results/single-gpu/23-02-2026/a100'])
