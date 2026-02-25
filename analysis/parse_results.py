@@ -194,6 +194,7 @@ def average_sweep_results(sweep_df):
 
     # columns to average
     avg_cols = df.drop(columns=drop_cols).columns.tolist()
+    std_cols = ['mean_ttft_ms', 'mean_itl_ms', 'mean_tpot_ms', 'output_throughput', 'total_token_throughput', 'mean_e2el_ms', 'duration']
 
     # average for each config group 
     averaged_sweep = sweep_df.groupby(group_cols)[avg_cols].mean().reset_index()
@@ -202,6 +203,12 @@ def average_sweep_results(sweep_df):
     run_counts = sweep_df.groupby(group_cols)['run_number'].count().reset_index()
     run_counts = run_counts.rename(columns={'run_number': 'num_runs'})
     averaged_sweep = averaged_sweep.merge(run_counts, on=group_cols)
+
+    # add std across runs to df
+    std_across_runs = sweep_df.groupby(group_cols)[std_cols].std().reset_index()
+    std_across_runs = std_across_runs.rename(columns={c: f'std_runs_{c}' for c in std_cols})
+
+    averaged_sweep = averaged_sweep.merge(std_across_runs, on=group_cols)
 
     return averaged_sweep
     

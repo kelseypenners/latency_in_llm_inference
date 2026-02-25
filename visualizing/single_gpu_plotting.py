@@ -85,10 +85,9 @@ fig = plot_ttft_vs_isl(a100_data, osl=512)
 fig = plot_ttft_vs_isl_per_osl(a100_data)
 fig = plot_ttft_vs_osl_per_isl(a100_data)
 
+# heatmaps
 fig = plot_input_output_heatmap(a100_data, values='output_throughput', title='Output Throughput (tokens/s)')
-
 fig = plot_input_output_heatmap(a100_data, values='total_token_throughput', title='Total Token Throughput (tokens/s)')
-
 fig = plot_input_output_heatmap(a100_data, values='mean_e2el_ms', title='Average E2E Latency (ms)')
 
 
