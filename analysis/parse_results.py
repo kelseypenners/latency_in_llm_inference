@@ -164,11 +164,13 @@ def get_results_sweep(results_dir):
             # add gpu_type to run summary
             run["gpu_type"] = gpu_type
         all_results.extend(result)
-    # sort dataframe by gpu_type, input, and output lengths
+
     all_results_df = pd.DataFrame(all_results)
-    print(all_results_df)
-    all_results_df = all_results_df.sort_values(["gpu_type", 
-                        "random_input_len", "random_output_len"])
+
+    # sort dataframe by gpu_type, input, and output lengths
+    possible_sort_cols = ["gpu_type", "random_input_len", "random_output_len", "max_concurrency"]
+    sort_cols = [c for c in possible_sort_cols if c in all_results_df.columns and all_results_df[c].notna().any()]
+    all_results_df = all_results_df.sort_values(sort_cols)
     
     # move gpu_type column to front
     col = all_results_df.pop('gpu_type')
@@ -177,19 +179,23 @@ def get_results_sweep(results_dir):
     return all_results_df
 
 # fields to keep from sweep json files
-KEEP_FIELDS = ["random_input_len", "random_output_len", "run_number", 
+KEEP_FIELDS = ["random_input_len", "random_output_len", 
+               "run_number", "max_concurrency",
                "mean_ttft_ms", "std_ttft_ms", "p99_ttft_ms", "mean_itl_ms", 
                "std_itl_ms", "p99_itl_ms", "mean_tpot_ms", "std_tpot_ms", 
                "p99_tpot_ms", "output_throughput", "total_token_throughput", 
                "request_throughput", "mean_e2el_ms", "std_e2el_ms", 
-               "p99_e2el_ms", "duration", "completed", "failed"] 
+               "p99_e2el_ms", "duration", "max_concurrent_requests",
+               "completed", "failed"] 
 
 def average_sweep_results(sweep_df):
+
     """ average sweep results across runs of same configs """
     df = sweep_df.copy()
 
     # columns we don't average over
-    group_cols = ['gpu_type', 'random_input_len', 'random_output_len']
+    possible_group_cols = ['gpu_type', 'random_input_len', 'random_output_len', 'max_concurrency']
+    group_cols = [c for c in possible_group_cols if c in df.columns and df[c].notna().any()]
     drop_cols = group_cols + ['run_number']
 
     # columns to average
@@ -222,7 +228,7 @@ def save_results_sweep(gpu_dirs):
         all_gpu_dfs.append(gpu_result_df)
 
     sweep = pd.concat(all_gpu_dfs).sort_values(["gpu_type", 
-                "random_input_len", "random_output_len"])
+                "random_input_len", "random_output_len", "max_concurrency"])
     averaged_sweep = average_sweep_results(sweep)
 
     sweep.to_csv(output_dir / "sweep_results.csv", index=False)
