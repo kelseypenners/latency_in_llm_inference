@@ -27,15 +27,22 @@ def plot_input_output_heatmap(df, values='mean__ms', title='TTFT (ms)'):
 
     return fig
 
-def plot_ttft_vs_isl(df, osl=128):
-    """ plot impact of ISL on TTFT"""
-
-    fixed_osl = df[df['random_output_len'] == osl].copy()
+def plot_ttft_vs_isl(df, osl=None):
+    """ plot impact of ISL on TTFT """
     
+    if osl == None:
+        osl_values = sorted(df['random_output_len'].unique())
+    else:
+        osl_values = [osl]
     fig, ax = plt.subplots(figsize=(8,6))
-    ax.plot(fixed_osl['random_input_len'], fixed_osl['mean_ttft_ms'], marker='o')
-    ax.set_title(f'Impact of ISL on TTFT (fixed OSL={osl})')
-    ax.set_xlabel('Input Sequence Length (tokens)')
+    #osl_values = sorted(df['random_output_len'].unique())
+
+    for osl in osl_values:
+        data = df[df['random_output_len'] == osl]
+        ax.plot(data['random_input_len'], data['mean_ttft_ms'], marker='o', label=f"OSL={osl}")
+    ax.set_title(f'Impact of Input Sequence Length (ITL) on TTFT')
+    ax.set_xlabel('ISL (tokens)')
+    ax.legend()
     ax.set_ylabel('TTFT (ms)')
     ax.grid(True, alpha=0.4)
 
@@ -79,7 +86,10 @@ def plot_ttft_vs_isl_per_osl(df):
     return fig
 
 # %%
+
+# 
 fig = plot_ttft_vs_isl(a100_data, osl=512)
+fig = plot_ttft_vs_isl(a100_data)
 
 # to look at trends for ISL and OSL 
 fig = plot_ttft_vs_isl_per_osl(a100_data)
@@ -89,6 +99,9 @@ fig = plot_ttft_vs_osl_per_isl(a100_data)
 fig = plot_input_output_heatmap(a100_data, values='output_throughput', title='Output Throughput (tokens/s)')
 fig = plot_input_output_heatmap(a100_data, values='total_token_throughput', title='Total Token Throughput (tokens/s)')
 fig = plot_input_output_heatmap(a100_data, values='mean_e2el_ms', title='Average E2E Latency (ms)')
+fig = plot_input_output_heatmap(a100_data, values='mean_itl_ms', title='ITL (ms)')
+fig = plot_input_output_heatmap(a100_data, values='mean_tpot_ms', title='TPOT (ms)')
+fig = plot_input_output_heatmap(a100_data, values='mean_ttft_ms', title='TTFT (ms)')
 
 
 # %%
