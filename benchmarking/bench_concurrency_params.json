@@ -1,0 +1,20 @@
+[
+    {
+        "max-concurrency": 1
+    },
+    {
+        "max-concurrency": 4
+    },
+    {
+        "max-concurrency": 8
+    },
+    {
+        "max-concurrency": 16
+    },
+    {
+        "max-concurrency": 32
+    },
+    {
+        "max-concurrency": 64
+    }
+]
