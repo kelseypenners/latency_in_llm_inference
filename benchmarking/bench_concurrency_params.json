@@ -16,5 +16,8 @@
     },
     {
         "max-concurrency": 64
+    },
+    {
+        "max-concurrency": 128
     }
 ]
