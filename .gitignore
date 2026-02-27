@@ -2,3 +2,4 @@ results/
 *.csv
 test_*.json
 Llama*/
+idk_*

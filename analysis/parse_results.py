@@ -239,4 +239,4 @@ def save_results_sweep(gpu_dirs):
 
 if __name__ == "__main__":
 
-    save_results_sweep(['./results/single-gpu/23-02-2026/a100'])
+    save_results_sweep(['./results/single-gpu/25-02-2026/a100'])
