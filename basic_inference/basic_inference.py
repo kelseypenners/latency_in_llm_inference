@@ -1,7 +1,7 @@
 import torch
 from vllm import LLM, SamplingParams
 
-model_id = "../Llama-3.2-1B"
+model_id = "/mnt/kpenners/Llama-3.2-1B"
 llm = LLM(model_id)
 
 # model prompts

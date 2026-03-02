@@ -1,8 +1,5 @@
 [
     {
-        "max-concurrency": 1
-    },
-    {
         "max-concurrency": 4
     },
     {
@@ -19,5 +16,11 @@
     },
     {
         "max-concurrency": 128
+    },
+    {
+        "max-concurrency": 256
+    },
+    {
+        "max-concurrency": 512
     }
 ]
