@@ -181,11 +181,11 @@ def get_results_sweep(results_dir):
 # fields to keep from sweep json files
 KEEP_FIELDS = ["random_input_len", "random_output_len", 
                "run_number", "max_concurrency",
-               "mean_ttft_ms", "std_ttft_ms", "p99_ttft_ms", "mean_itl_ms", 
-               "std_itl_ms", "p99_itl_ms", "mean_tpot_ms", "std_tpot_ms", 
-               "p99_tpot_ms", "output_throughput", "total_token_throughput", 
+               "mean_ttft_ms", "std_ttft_ms", "p99_ttft_ms", "p90_ttft_ms", "p75_ttft_ms", "mean_itl_ms", 
+               "std_itl_ms", "p99_itl_ms", "p90_itl_ms", "p75_itl_ms", "mean_tpot_ms", "std_tpot_ms", 
+               "p99_tpot_ms", "p90_tpot_ms", "p75_tpot_ms","output_throughput", "total_token_throughput", 
                "request_throughput", "mean_e2el_ms", "std_e2el_ms", 
-               "p99_e2el_ms", "duration", "max_concurrent_requests",
+               "p99_e2el_ms", "p90_e2el_ms", "p75_e2el_ms", "duration", "max_concurrent_requests",
                "completed", "failed"] 
 
 def average_sweep_results(sweep_df):
@@ -239,4 +239,4 @@ def save_results_sweep(gpu_dirs):
 
 if __name__ == "__main__":
 
-    save_results_sweep(['./results/single-gpu/25-02-2026/a100'])
+    save_results_sweep(['./results/single-gpu/27-02-2026/a100'])

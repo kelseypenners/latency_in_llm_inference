@@ -10,6 +10,8 @@ from plot_utils import *
 sweep_df = pd.read_csv('../results/single-gpu/23-02-2026/averaged_sweep_results.csv')
 batch_sweep_df = pd.read_csv('../results/single-gpu/25-02-2026/averaged_concurrency_sweep_results.csv')
 
+batch_sweep_df = pd.read_csv('../results/single-gpu/27-02-2026/averaged_batch_sweep_results.csv')
+
 # gpu-specific
 a100_data = sweep_df[sweep_df['gpu_type'] == 'a100'].copy()
 v100_data = sweep_df[sweep_df['gpu_type'] == 'v100'].copy()
@@ -146,19 +148,22 @@ def plot_metrics_vs_batch(df, metric, label, title):
         transform=ax.transAxes, ha='center', fontsize=8, color='gray')
     ax.set_xlabel('Concurrency (max in-flight requests)')
     ax.set_ylabel(label)
+    ax.set_xscale('log', base=2)
     ax.set_xticks(df['max_concurrency'])
     ax.grid(True, axis='y', alpha=0.4)
 
     plt.tight_layout()
     return fig
 
-def plot_mean_vs_p99(df, metric="itl", title="ITL Tail Latency Inflation with Concurrency"):
+def plot_mean_vs_p99(df, metric="itl", title="ITL Tail Latency Inflation with Concurrency", p90=True):
     """ mean vs P99 for ITL vs concurrency """
     fig, ax = plt.subplots(figsize=(6, 5))
 
     
     ax.plot(df['max_concurrency'], df[f'mean_{metric}_ms'], marker='o', linewidth=2, label='Mean')
     ax.plot(df['max_concurrency'], df[f'p99_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P99')
+    ax.plot(df['max_concurrency'], df[f'p90_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P90')
+    ax.plot(df['max_concurrency'], df[f'p75_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P75')
     ax.fill_between(df['max_concurrency'], df[f'mean_{metric}_ms'], df[f'p99_{metric}_ms'],
                     alpha=0.12, label='Mean / P99 Gap')
 
@@ -170,6 +175,7 @@ def plot_mean_vs_p99(df, metric="itl", title="ITL Tail Latency Inflation with Co
     ax.set_ylabel(f'{metric.upper()} (ms)', labelpad=8)
     ax.set_xticks(df['max_concurrency'])
     ax.legend()
+    ax.set_xscale('log', base=2)
     ax.grid(True, axis='y', alpha=0.4)
 
     plt.tight_layout()
@@ -257,6 +263,7 @@ def plot_concurrency_4panel(df, std_across_runs=False, stds=1):
         ax.set_xlabel('Concurrency', labelpad=6)
         ax.set_ylabel(ylabel, labelpad=6)
         ax.set_title(ylabel)
+        ax.set_xscale('log', base=2)
         ax.set_xticks(df['max_concurrency'])
         ax.grid(True, axis='y', alpha=0.4)
 
@@ -271,8 +278,8 @@ def plot_concurrency_4panel(df, std_across_runs=False, stds=1):
 fig = plot_ttft_vs_isl(a100_data)
 
 # to look at trends for ISL and OSL 
-fig = plot_ttft_vs_isl_per_osl(a100_data)
-fig = plot_ttft_vs_osl_per_isl(a100_data)
+#fig = plot_ttft_vs_isl_per_osl(a100_data)
+#fig = plot_ttft_vs_osl_per_isl(a100_data)
 
 # %% HEATMAPS
 
@@ -280,28 +287,28 @@ fig = plot_ttft_vs_osl_per_isl(a100_data)
 fig = plot_input_output_heatmap(a100_data, values='output_throughput', title='Output Throughput (tokens/s)')
 fig = plot_input_output_heatmap(a100_data, values='total_token_throughput', title='Total Token Throughput (tokens/s)')
 fig = plot_input_output_heatmap(a100_data, values='mean_e2el_ms', title='Average E2E Latency (ms)')
-fig = plot_input_output_heatmap(a100_data, values='mean_itl_ms', title='ITL (ms)')
-fig = plot_input_output_heatmap(a100_data, values='mean_tpot_ms', title='TPOT (ms)')
+#fig = plot_input_output_heatmap(a100_data, values='mean_itl_ms', title='ITL (ms)')
+#fig = plot_input_output_heatmap(a100_data, values='mean_tpot_ms', title='TPOT (ms)')
 fig = plot_input_output_heatmap(a100_data, values='mean_ttft_ms', title='TTFT (ms)')
 
 # %% E2E LATENCY VISUALS
 
 # E2EL vs ISL and OSL
 fig = plot_e2el_vs_osl(a100_data)
-fig = plot_e2el_vs_isl_per_osl(a100_data)
+#fig = plot_e2el_vs_isl_per_osl(a100_data)
 
 # %% BATCH SIZE VISUALS
 
 # batch size versus metrics
-fig = plot_metrics_vs_batch(batch_sweep_df, "mean_ttft_ms", "TTFT (ms)", "TTFT vs Concurrency")
-fig = plot_metrics_vs_batch(batch_sweep_df, "mean_itl_ms", "ITL (ms)", "ITL vs Concurrency")
-fig = plot_metrics_vs_batch(batch_sweep_df, "mean_tpot_ms", "TPOT (ms)", "TPOT vs Concurrency")
-fig = plot_metrics_vs_batch(batch_sweep_df, "mean_e2el_ms", "E2EL (ms)", "E2EL vs Concurrency")
+# fig = plot_metrics_vs_batch(batch_sweep_df, "mean_ttft_ms", "TTFT (ms)", "TTFT vs Concurrency")
+# fig = plot_metrics_vs_batch(batch_sweep_df, "mean_itl_ms", "ITL (ms)", "ITL vs Concurrency")
+# fig = plot_metrics_vs_batch(batch_sweep_df, "mean_tpot_ms", "TPOT (ms)", "TPOT vs Concurrency")
+# fig = plot_metrics_vs_batch(batch_sweep_df, "mean_e2el_ms", "E2EL (ms)", "E2EL vs Concurrency")
 fig = plot_metrics_vs_batch(batch_sweep_df, "output_throughput", "Output Throughput (tokens/s)", "Output Throughput Scales Nonlinearly with Concurrency")  
-fig = plot_metrics_vs_batch(batch_sweep_df, "total_token_throughput", "Total Token Throughput", "Total Token Throughput vs Concurrency")  
+#fig = plot_metrics_vs_batch(batch_sweep_df, "total_token_throughput", "Total Token Throughput", "Total Token Throughput vs Concurrency")  
 
 fig = plot_concurrency_4panel(batch_sweep_df)
-fig = plot_concurrency_4panel(batch_sweep_df, std_across_runs=True, stds=3)
+fig = plot_concurrency_4panel(batch_sweep_df, std_across_runs=True, stds=1)
 
 fig = plot_seqlen_4panel(a100_data, std_across_runs=True, stds=20)
 
@@ -311,6 +318,7 @@ fig = plot_mean_vs_p99(batch_sweep_df, 'ttft')
 fig = plot_mean_vs_p99(batch_sweep_df, 'tpot', title="TPOT vs Concurrency")
 
 
+# the ones alex liked
 fig = plot_ttft_vs_isl(a100_data)
 fig = plot_input_output_heatmap(a100_data, values='output_throughput', title='Output Throughput (tokens/s)')
 fig = plot_metrics_vs_batch(batch_sweep_df, "output_throughput", "Output Throughput (tokens/s)", "Output Throughput Scales Nonlinearly with Concurrency")  
