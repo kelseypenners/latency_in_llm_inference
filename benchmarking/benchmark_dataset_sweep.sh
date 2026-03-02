@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MODEL="/mnt/kpenners/Llama-3.2-1B"
+MODEL="meta-llama/Llama-3.1-8B"
 GPU_ID=7
 GPU_TYPE="a100"
 DATE="02-03-2026"
