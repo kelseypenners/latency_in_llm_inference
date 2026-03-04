@@ -168,7 +168,7 @@ def get_results_sweep(results_dir):
     all_results_df = pd.DataFrame(all_results)
 
     # sort dataframe by gpu_type, input, and output lengths
-    possible_sort_cols = ["gpu_type", "random_input_len", "random_output_len", "max_concurrency"]
+    possible_sort_cols = ["gpu_type", "random_input_len", "random_output_len", "max_concurrency", 'dataset-name']
     sort_cols = [c for c in possible_sort_cols if c in all_results_df.columns and all_results_df[c].notna().any()]
     all_results_df = all_results_df.sort_values(sort_cols)
     
@@ -194,7 +194,7 @@ def average_sweep_results(sweep_df):
     df = sweep_df.copy()
 
     # columns we don't average over
-    possible_group_cols = ['gpu_type', 'random_input_len', 'random_output_len', 'max_concurrency']
+    possible_group_cols = ['gpu_type', 'random_input_len', 'random_output_len', 'max_concurrency', 'dataset-name']
     group_cols = [c for c in possible_group_cols if c in df.columns and df[c].notna().any()]
     drop_cols = group_cols + ['run_number']
 
@@ -239,4 +239,4 @@ def save_results_sweep(gpu_dirs):
 
 if __name__ == "__main__":
 
-    save_results_sweep(['./results/single-gpu/27-02-2026/a100'])
+    save_results_sweep(['./results/single-gpu/02-03-2026/a100'])
