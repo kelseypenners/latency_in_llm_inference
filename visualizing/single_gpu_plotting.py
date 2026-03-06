@@ -18,6 +18,7 @@ v100_seqlen_data = seqlen_df[seqlen_df['gpu_type'] == 'v100'].copy()
 a100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'a100'].copy()
 v100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'v100'].copy()
 
+itldistributions_path = '../results/single-gpu/concurrency-sweep/itl_distributions.parquet'
 # SEQLEN SWEEP PLOTS ----------------------------------------------------
 
 def plot_input_output_heatmap(df, gpu_type, values, title, cmap='Oranges'):
@@ -261,6 +262,43 @@ def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512):
     
     return fig
 
+def plot_itl_boxplot(parquet_path, gpu_type, title=None):
+    """ per-token ITL distribution as box-whisker plot across concurrency levels """
+    title = title or 'Per-Token ITL Distribution vs Concurrency'
+
+    df = pd.read_parquet(parquet_path)
+    if gpu_type.lower().replace(' ', '') in ['a10040gb', 'a100']:
+        df = df[df['gpu_type'] == 'a100']
+    else:
+        df = df[df['gpu_type'] == 'v100']
+
+    df_exploded = df.explode('itls_ms')
+    df_exploded['itls_ms'] = df_exploded['itls_ms'].astype(float)
+
+    concurrency_levels = sorted(df_exploded['max_concurrency'].unique())
+    data = [df_exploded[df_exploded['max_concurrency'] == c]['itls_ms'].values for c in concurrency_levels]
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    bp =ax.boxplot(data, labels=concurrency_levels, showfliers=False, patch_artist=True)
+    for patch in bp['boxes']:
+        patch.set_facecolor('#4C9BE8')
+        patch.set_alpha(0.7)
+    for median in bp['medians']:
+        median.set_color('#E85C4C')
+        median.set_linewidth(2)
+    for whisker in bp['whiskers']:
+        whisker.set_color('#333333')
+        whisker.set_linewidth(1.2)
+    for cap in bp['caps']:
+        cap.set_color('#333333')
+        cap.set_linewidth(1.2)
+    ax.set_title(title, fontweight='bold', pad=20)
+    subtitle(ax, gpu_type, model='Llama-3.1-8B', extra=f'ISL / OSL = 512 / 512')
+    ax.set_xlabel('Concurrency (max in-flight requests)', labelpad=8)
+    ax.set_ylabel('ITL (ms)', labelpad=8)
+    ax.grid(True, axis='y', alpha=0.4)
+    plt.tight_layout()
+    return fig
 
 # A100 PLOTS ----------------------------------------------------
 #%% [markdown] 
@@ -374,6 +412,7 @@ concurrency_data = a100_concurrency_data
 gpu_type = 'V100 32GB'
 fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
 
-
+plot_itl_boxplot(parquet_path = itldistributions_path, 
+                 gpu_type = 'A100 40GB')
 
 # %%
