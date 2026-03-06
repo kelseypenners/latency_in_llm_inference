@@ -104,15 +104,6 @@ def get_results_sweep(results_dir):
 
     all_results_df = pd.DataFrame(all_results)
 
-    # # sort dataframe by gpu_type, input, and output lengths
-    # possible_sort_cols = ["gpu_type", "random_input_len", "random_output_len", "max_concurrency", 'dataset-name']
-    # sort_cols = [c for c in possible_sort_cols if c in all_results_df.columns and all_results_df[c].notna().any()]
-    # all_results_df = all_results_df.sort_values(sort_cols)
-    
-    # # move gpu_type column to front
-    # col = all_results_df.pop('gpu_type')
-    # all_results_df.insert(0, 'gpu_type', col)
-
     return all_results_df
 
 def average_sweep_results(sweep_df):
