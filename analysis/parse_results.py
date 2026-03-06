@@ -62,12 +62,21 @@ def parse_throughput_json(filepath):
         'tokens per s': data['tokens_per_second']
     }
 
-def parse_sweep_summary(filepath):
+# fields to keep from sweep json files
+KEEP_FIELDS = ["random_input_len", "random_output_len", 
+               "run_number", "max_concurrency",
+               "mean_ttft_ms", "std_ttft_ms", "p99_ttft_ms", "p90_ttft_ms", "p75_ttft_ms", "mean_itl_ms", 
+               "std_itl_ms", "p99_itl_ms", "p90_itl_ms", "p75_itl_ms", "mean_tpot_ms", "std_tpot_ms", 
+               "p99_tpot_ms", "p90_tpot_ms", "p75_tpot_ms","output_throughput", "total_token_throughput", 
+               "request_throughput", "mean_e2el_ms", "std_e2el_ms", 
+               "p99_e2el_ms", "p90_e2el_ms", "p75_e2el_ms", "duration", "max_concurrent_requests",
+               "completed", "failed"] 
+
+def parse_sweep_summary_json(filepath):
     """ parse sweep summary json files """
     
     with open(filepath, 'r') as f:
         summary_data = json.load(f)
-    
     results = []
 
     # for each run get kept field values
@@ -79,78 +88,6 @@ def parse_sweep_summary(filepath):
         results.append(run_results)
     return results
 
-def get_isl_osl_batch(filepath):
-    # parse ISL and OSL from filename
-    parts = Path(filepath).stem.split('_')
-    isl, osl, batch = None, None, None
-    for part in parts:
-        if part.startswith('isl'):
-            isl = int(part.replace('isl', ''))
-        elif part.startswith('osl'):
-            osl = int(part.replace('osl', ''))
-        elif part.startswith('batch'):
-            batch = int(part.replace('batch', ''))
-    return isl, osl, batch
-
-def get_results_bench_outputs(results_dir):
-    """ get results from a dir with bench serve, latency and throughput output files """
-    results_dir = Path(results_dir)
-    gpu_name = results_dir.name
-    
-    # bench serve results
-    serve_results = []
-    for file in results_dir.glob('run_*_serve.txt'):
-        isl, osl, _ = get_isl_osl_batch(file.name)
-        metrics = parse_serve_output(file)
-        metrics.update({'GPU': gpu_name, 'ISL': isl, 'OSL': osl})
-        serve_results.append(metrics)
-
-    # bench latency results
-    batch_configs = {}
-    for file in results_dir.glob('run_*_latency.json'):
-        isl, osl, batch = get_isl_osl_batch(file.name)
-        key = (isl, osl, batch)
-        if key not in batch_configs:
-            batch_configs[key] = {'GPU': gpu_name, 'ISL': isl, 'OSL': osl, 'batch': batch}
-        batch_configs[key].update(parse_latency_json(file))
-
-    # bench throughput results
-    for file in results_dir.glob('run_*_throughput.json'):
-        isl, osl, batch = get_isl_osl_batch(file.name)
-        key = (isl, osl, batch)
-        if key not in batch_configs:
-            batch_configs[key] = {'GPU': gpu_name, 'ISL': isl, 'OSL': osl, 'batch': batch}
-        batch_configs[key].update(parse_throughput_json(file))
-
-    return serve_results, list(batch_configs.values())
-
-def save_results_bench_outputs(gpu_dirs):
-
-    # all results
-    all_serve = []
-    all_latency_throughput = []
-
-    # gather results from both gpus
-    for gpu_dir in gpu_dirs:
-        if Path(gpu_dir).exists():
-            # get results
-            serve, latency_throughput = get_results_bench_outputs(gpu_dir)
-            # add to all results
-            all_serve.extend(serve)
-            all_latency_throughput.extend(latency_throughput )
-            print(f"{Path(gpu_dir).name}: {len(serve)} serve configs, {len(latency_throughput )} batch configs")
-    
-    # create dataframes with all results
-    df_serve = pd.DataFrame(all_serve).sort_values(['GPU', 'ISL', 'OSL'])
-    df_batch = pd.DataFrame(all_latency_throughput).sort_values(['GPU', 'ISL', 'OSL', 'batch'])
-    
-    # save to csvs
-    df_serve.to_csv('./results/serve_results.csv', index=False)
-    df_batch.to_csv('./results/latency_throughput_results.csv', index=False)
-    
-    print(f"\nsaved serve_results.csv ({len(df_serve)} total configs)")
-    print(f"saved batch_results.csv ({len(df_batch)} total configs)")
-   
 def get_results_sweep(results_dir):
     """ get results from a dir with summary.json files """
     results_dir = Path(results_dir)
@@ -159,7 +96,7 @@ def get_results_sweep(results_dir):
     all_results = []
     # parse all summary files in result dir
     for file in results_dir.rglob('summary*.json'):
-        result = parse_sweep_summary(file)
+        result = parse_sweep_summary_json(file)
         for run in result:
             # add gpu_type to run summary
             run["gpu_type"] = gpu_type
@@ -167,26 +104,16 @@ def get_results_sweep(results_dir):
 
     all_results_df = pd.DataFrame(all_results)
 
-    # sort dataframe by gpu_type, input, and output lengths
-    possible_sort_cols = ["gpu_type", "random_input_len", "random_output_len", "max_concurrency", 'dataset-name']
-    sort_cols = [c for c in possible_sort_cols if c in all_results_df.columns and all_results_df[c].notna().any()]
-    all_results_df = all_results_df.sort_values(sort_cols)
+    # # sort dataframe by gpu_type, input, and output lengths
+    # possible_sort_cols = ["gpu_type", "random_input_len", "random_output_len", "max_concurrency", 'dataset-name']
+    # sort_cols = [c for c in possible_sort_cols if c in all_results_df.columns and all_results_df[c].notna().any()]
+    # all_results_df = all_results_df.sort_values(sort_cols)
     
-    # move gpu_type column to front
-    col = all_results_df.pop('gpu_type')
-    all_results_df.insert(0, 'gpu_type', col)
+    # # move gpu_type column to front
+    # col = all_results_df.pop('gpu_type')
+    # all_results_df.insert(0, 'gpu_type', col)
 
     return all_results_df
-
-# fields to keep from sweep json files
-KEEP_FIELDS = ["random_input_len", "random_output_len", 
-               "run_number", "max_concurrency",
-               "mean_ttft_ms", "std_ttft_ms", "p99_ttft_ms", "p90_ttft_ms", "p75_ttft_ms", "mean_itl_ms", 
-               "std_itl_ms", "p99_itl_ms", "p90_itl_ms", "p75_itl_ms", "mean_tpot_ms", "std_tpot_ms", 
-               "p99_tpot_ms", "p90_tpot_ms", "p75_tpot_ms","output_throughput", "total_token_throughput", 
-               "request_throughput", "mean_e2el_ms", "std_e2el_ms", 
-               "p99_e2el_ms", "p90_e2el_ms", "p75_e2el_ms", "duration", "max_concurrent_requests",
-               "completed", "failed"] 
 
 def average_sweep_results(sweep_df):
 
@@ -218,25 +145,33 @@ def average_sweep_results(sweep_df):
 
     return averaged_sweep
     
-def save_results_sweep(gpu_dirs):
+def save_results_sweep(gpu_dirs, output_dir, sort_cols):
     """ parses and saves sweep data as csv, also saves averaged across runs csv"""
-    output_dir = Path(gpu_dirs[0]).parent
-    all_gpu_dfs = []
 
+    all_gpu_dfs = []
     for gpu_dir in gpu_dirs:
         gpu_result_df = get_results_sweep(gpu_dir)
         all_gpu_dfs.append(gpu_result_df)
 
-    sweep = pd.concat(all_gpu_dfs).sort_values(["gpu_type", 
-                "random_input_len", "random_output_len", "max_concurrency"])
+    sweep = pd.concat(all_gpu_dfs).sort_values(sort_cols)
     averaged_sweep = average_sweep_results(sweep)
 
-    sweep.to_csv(output_dir / "sweep_results.csv", index=False)
-    averaged_sweep.to_csv(output_dir / "averaged_sweep_results.csv", index=False)
+    sweep.to_csv(output_dir / f"{output_dir.name.replace('-', '_')}_results.csv", index=False)
+    averaged_sweep.to_csv(output_dir / f"averaged_{output_dir.name.replace('-', '_')}_results.csv", index=False)
 
-    print(f"\nsaved sweep_results.csv ({len(sweep)} total runs)")
-    print(f"saved averaged_sweep_results.csv ({len(averaged_sweep)} total configs)\n")
-
+    print(f"saved \n{output_dir.name.replace('-', '_')}_results.csv ({len(sweep)} total runs)")
+    print(f"saved averaged_{output_dir.name.replace('-', '_')}_results.csv({len(averaged_sweep)} total configs)\n")
+    
 if __name__ == "__main__":
+    base = Path('./results/single-gpu')
+    save_results_sweep(
+        gpu_dirs=[base / 'seqlen-sweep/a100', base / 'seqlen-sweep/v100'],
+        output_dir=base / 'seqlen-sweep',
+        sort_cols=['gpu_type', 'random_input_len', 'random_output_len']
+    )
 
-    save_results_sweep(['./results/single-gpu/02-03-2026/a100'])
+    save_results_sweep(
+        gpu_dirs=[base / 'concurrency-sweep/a100'],
+        output_dir=base / 'concurrency-sweep',
+        sort_cols=['gpu_type', 'max_concurrency']
+    )

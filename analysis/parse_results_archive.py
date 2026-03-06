@@ -4,6 +4,21 @@ from pathlib import Path
 
 from parse_results import *
 
+
+
+def get_isl_osl_batch(filepath):
+    # parse ISL and OSL from filename
+    parts = Path(filepath).stem.split('_')
+    isl, osl, batch = None, None, None
+    for part in parts:
+        if part.startswith('isl'):
+            isl = int(part.replace('isl', ''))
+        elif part.startswith('osl'):
+            osl = int(part.replace('osl', ''))
+        elif part.startswith('batch'):
+            batch = int(part.replace('batch', ''))
+    return isl, osl, batch
+
 def get_results_bench_outputs(results_dir):
     """ get results from a dir with bench serve, latency and throughput output files """
     results_dir = Path(results_dir)
