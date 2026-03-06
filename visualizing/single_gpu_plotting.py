@@ -8,17 +8,20 @@ import seaborn as sns
 from plot_utils import *
 
 # load data
-sweep_df = pd.read_csv('../results/single-gpu/23-02-2026/averaged_sweep_results.csv')
-batch_sweep_df = pd.read_csv('../results/single-gpu/25-02-2026/averaged_concurrency_sweep_results.csv')
-
-batch_sweep_df = pd.read_csv('../results/single-gpu/27-02-2026/averaged_batch_sweep_results.csv')
+seqlen_df = pd.read_csv('../results/single-gpu/seqlen-sweep/averaged_seqlen_sweep_results.csv')
+concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/averaged_concurrency_sweep_results.csv')
 
 # gpu-specific
-a100_data = sweep_df[sweep_df['gpu_type'] == 'a100'].copy()
-v100_data = sweep_df[sweep_df['gpu_type'] == 'v100'].copy()
+a100_seqlen_data = seqlen_df[seqlen_df['gpu_type'] == 'a100'].copy()
+v100_seqlen_data = seqlen_df[seqlen_df['gpu_type'] == 'v100'].copy()
 
-def plot_input_output_heatmap(df, values, title, cmap='Oranges'):
-    """ plot heatmap for input and output lengths and given value """
+a100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'a100'].copy()
+v100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'v100'].copy()
+
+# SEQLEN SWEEP PLOTS ----------------------------------------------------
+
+def plot_input_output_heatmap(df, gpu_type, values, title, cmap='Oranges'):
+    """ heatmap of metric across all ISL/OSL configs """
     
     pivot = df.pivot_table(values=values, 
                            index='random_output_len', columns='random_input_len')
@@ -27,40 +30,88 @@ def plot_input_output_heatmap(df, values, title, cmap='Oranges'):
     sns.heatmap(pivot, annot=True, fmt='.1f', cmap=cmap, ax=ax, linecolor='white', linewidths=0.7, annot_kws={"size": 9})
     ax.invert_yaxis()
     ax.set_title(title, pad=20, fontweight='bold')
-    ax.text(0.5, 1.03, '1 x A100 40GB  |  Llama-3.1-8B  |  Concurrency = 1',
-        transform=ax.transAxes, ha='center', fontsize=8, color='gray')
+    subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
     ax.set_xlabel('Input Sequence Length (tokens)', labelpad=10)
     ax.set_ylabel('Output Sequence Length (tokens)', labelpad=10)
     plt.tight_layout()
 
     return fig
 
-def plot_ttft_vs_isl(df, osl=None):
-    """ plot impact of ISL on TTFT """
+def plot_heatmap_comparison(a100_df, v100_df, values, title, cmap='Oranges', same_range=False):
+    """ comparison of heatmaps between GPUs for same metric """
+    dfs = [a100_df, v100_df]
+    gpu_types = ['A100 40GB', 'V100 32GB']
+    pivots = [df.pivot_table(values=values, index='random_output_len', columns='random_input_len')
+              for df in dfs]
+    if same_range:
+        vmin = min(p.min().min() for p in pivots)
+        vmax = max(p.max().max() for p in pivots)
+    else: 
+        vmin = None 
+        vmax = None
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 5))
+    for ax, pivot, gpu_type in zip(axes, pivots, gpu_types):
+        sns.heatmap(pivot, annot=True, fmt='.1f', cmap=cmap, ax=ax, linecolor='white', 
+                    linewidths=0.7, annot_kws={"size": 9}, vmin=vmin, vmax=vmax)
+        ax.invert_yaxis()
+        ax.set_title(gpu_type, pad=15, fontweight='bold')
+        ax.set_xlabel('Input Sequence Length (tokens)', labelpad=10)
+        ax.set_ylabel('Output Sequence Length (tokens)', labelpad=10)
+    fig.suptitle(title, fontweight='bold')
+    fig.text(0.5, 0.93, 'Llama-3.1-8B  |  Concurrency = 1',
+             ha='center', va='top', fontsize=10, color='grey')
+    plt.tight_layout()
+
+    return fig
+
+def plot_ttft_vs_isl(df, gpu_type, osl=None, title=None):
+    """ TTFT vs ISL, one line per OSL value (or a fixed OSL) """
 
     if osl == None:
         osl_values = sorted(df['random_output_len'].unique())
     else:
         osl_values = [osl]
-    fig, ax = plt.subplots(figsize=(7,5))
+    title = title or 'TTFT Scales Linearly with ISL, Independent of OSL'
 
+    fig, ax = plt.subplots(figsize=(7,5))
     for osl in osl_values:
         data = df[df['random_output_len'] == osl]
         ax.plot(data['random_input_len'], data['mean_ttft_ms'], marker='o', label=f"OSL={osl}", linewidth=2)
-    ax.set_title(f'TTFT Scales Linearly with ISL, Independent of OSL', fontweight='bold', pad=20)
-    ax.text(0.5, 1.03, '1 x A100 40GB  |  Llama-3.1-8B  |  Concurrency = 1',
-        transform=ax.transAxes, ha='center', fontsize=8, color='gray')
+    ax.set_title(title, fontweight='bold', pad=20)
+    subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
     ax.set_xlabel('Input Sequence Length (ISL) - (tokens)')
     ax.legend(title='Output Length', loc='upper left')
     ax.set_ylabel('TTFT (ms)')
     ax.grid(True, alpha=0.4)
-    #ax.set_xticks(sorted(df['random_input_len'].unique()))
+    plt.tight_layout()
 
+    return fig
+
+def plot_ttft_vs_isl_comparison(a100_df, v100_df, osl=512, title=None):
+    """ TTFT vs ISL comparison between GPUs"""
+
+    title = title or f'TTFT vs ISL - A100 vs V100 (OSL={osl})'
+
+    labels = ['A100 40GB', 'V100 32GB']
+    dfs = [a100_df, v100_df]
+    fig, ax = plt.subplots(figsize=(7,5))
+    for i in range(2):
+        df = dfs[i]
+        label = labels[i]
+        data = df[df['random_output_len'] == osl]
+        ax.plot(data['random_input_len'], data['mean_ttft_ms'], marker='o', label=label, linewidth=2)
+    ax.set_title(title, fontweight='bold', pad=20)
+    subtitle(ax, gpu_type='A100 40GB vs V100 32GB', model='Llama-3.1-8B', extra='Concurrency = 1')
+    ax.set_xlabel('Input Sequence Length (ISL) - (tokens)')
+    ax.legend(title='Output Length', loc='upper left')
+    ax.set_ylabel('TTFT (ms)')
+    ax.grid(True, alpha=0.4)
     plt.tight_layout()
     return fig
 
 def plot_ttft_vs_osl_per_isl(df):
-    """ plot impact of OSL on TTFT for each ISL config """
+    """ multiple plots: TTFT vs OSL for each ISL """
 
     isl_values = sorted(df['random_input_len'].unique())
     fig, axes = plt.subplots(1, len(isl_values), figsize=(4*len(isl_values), 4), sharey=True)
@@ -78,7 +129,7 @@ def plot_ttft_vs_osl_per_isl(df):
     return fig
 
 def plot_ttft_vs_isl_per_osl(df):
-    """ plot impact of ISL on TTFT for each OSL config """
+    """ multiple plots: TTFT vs ISL for each OSL """
 
     osl_values = sorted(df['random_output_len'].unique())
     fig, axes = plt.subplots(1, len(osl_values), figsize=(4*len(osl_values), 4), sharey=True)
@@ -95,83 +146,73 @@ def plot_ttft_vs_isl_per_osl(df):
     plt.tight_layout()
     return fig
 
-def plot_e2el_vs_osl(df, isl=None):
-    """ plot impact of OSL on E2E latency """
+def plot_e2el_vs_osl(df, gpu_type, isl=None, title=None):
+    """ E2E latency vs OSL, one line per ISL (or fixed ISL) """
     
     if isl == None:
         isl_values = sorted(df['random_input_len'].unique())
     else:
         isl_values = [isl]
-
+    title = title or 'Impact of Output Sequence Length (OSL) on E2E Latency'
+    
     fig, ax = plt.subplots(figsize=(7,5))
-
     for isl in isl_values:
         data = df[df['random_input_len'] == isl]
         ax.plot(data['random_output_len'], data['mean_e2el_ms'], marker='o', label=f"ISL={isl}", linewidth=2)
-    ax.set_title(f'Impact of Output Sequence Length (OSL) on E2E Latency', fontweight='bold')
+    ax.set_title(title, fontweight='bold', pad=20)
     ax.set_xlabel('OSL (tokens)')
     ax.legend(title='Input Length')
     ax.set_ylabel('E2E Latency (ms)')
     ax.grid(True, alpha=0.4)
-    #ax.set_xticks(sorted(df['random_output_len'].unique()))
-
     plt.tight_layout()
     return fig
 
-
-
 def plot_e2el_vs_isl_per_osl(df):
-    """ plot impact of ISL on TTFT for each OSL config """
+    """ multiple plots: E2E latency vs ISL for each OSL """
 
     osl_values = sorted(df['random_output_len'].unique())
-    fig, axes = plt.subplots(1, len(osl_values), figsize=(4*len(osl_values), 4), sharey=True)
+    title = title or 'E2E Latency vs ISL (fixed OSL)'
 
+    fig, axes = plt.subplots(1, len(osl_values), figsize=(4*len(osl_values), 4), sharey=True)
     for ax, osl in zip(axes, osl_values):
         data = df[df['random_output_len'] == osl]
         ax.plot(data['random_input_len'], data['mean_e2el_ms'], marker='o')
         ax.set_title(f'OSL={osl}')
         ax.set_xlabel('ISL (tokens)')
         ax.grid(True, alpha=0.4)
-    
-    axes[0].set_ylabel('E2E Latency')
-    plt.suptitle('E2E Latency vs ISL (fixed OSL)', fontweight='bold')
+    axes[0].set_ylabel('E2E Latency (ms)')
+    plt.suptitle(title, fontweight='bold')
     plt.tight_layout()
     return fig
 
+def plot_metrics_vs_concurrency(df, gpu_type, metric, label, title):
+    """ metric versus max concurrency """
 
-def plot_metrics_vs_batch(df, metric, label, title):
-    """ plot metrics versus max concurrency """
     fig, ax = plt.subplots(figsize=(7,5))
-
     ax.plot(df['max_concurrency'], df[metric], marker='o')
     ax.set_title(title, fontweight='bold', pad=20)
-    ax.text(0.5, 1.03, '1 x A100 40GB  |  Llama-3.1-8B  |  ISL / OSL = 512 / 512',
-        transform=ax.transAxes, ha='center', fontsize=8, color='gray')
+    subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
     ax.set_xlabel('Concurrency (max in-flight requests)')
     ax.set_ylabel(label)
     ax.set_xscale('log', base=2)
     ax.set_xticks(df['max_concurrency'])
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     ax.grid(True, axis='y', alpha=0.4)
-
     plt.tight_layout()
     return fig
 
-def plot_mean_vs_p99(df, metric="itl", title="ITL Tail Latency Inflation with Concurrency", p90=True):
+def plot_mean_vs_p99(df, gpu_type, metric="itl", title=None, p90=True):
     """ mean vs P99 for ITL vs concurrency """
-    fig, ax = plt.subplots(figsize=(6, 5))
+    title = title or f'{metric.upper()}: Mean vs Tail Latency vs Concurrency'
 
-    
+    fig, ax = plt.subplots(figsize=(6, 5))
     ax.plot(df['max_concurrency'], df[f'mean_{metric}_ms'], marker='o', linewidth=2, label='Mean')
     ax.plot(df['max_concurrency'], df[f'p99_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P99 (slowest 1% of tokens)')
     ax.plot(df['max_concurrency'], df[f'p90_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P90 (slowest 10% of tokens)')
-    ax.fill_between(df['max_concurrency'], df[f'mean_{metric}_ms'], df[f'p99_{metric}_ms'],
-                    alpha=0.12, label='Mean / P99 Gap')
+    ax.fill_between(df['max_concurrency'], df[f'mean_{metric}_ms'], df[f'p99_{metric}_ms'], alpha=0.12, label='Mean / P99 Gap')
 
-    ax.set_title(f'{metric.upper()}: Mean vs P99')
     ax.set_title(title, fontweight='bold', pad=20)
-    ax.text(0.5, 1.03, '1 x A100 40GB  |  Llama-3.1-8B  |  ISL / OSL = 512 / 512',
-        transform=ax.transAxes, ha='center', fontsize=8, color='gray')
+    subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
     ax.set_xlabel('Concurrency', labelpad=8)
     ax.set_ylabel(f'{metric.upper()} (ms)', labelpad=8)
     ax.set_xticks(df['max_concurrency'])
@@ -179,197 +220,160 @@ def plot_mean_vs_p99(df, metric="itl", title="ITL Tail Latency Inflation with Co
     ax.set_xscale('log', base=2)
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     ax.grid(True, axis='y', alpha=0.4)
-
     plt.tight_layout()
     return fig
 
-def plot_run_variance(seq_df, batch_df, stds=1, osl=512):
+def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512):
+    """ TTFT run variance (seqlen) and throughput run variance (concurrency) """
+    
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
+    # TTFT variance
     ax = axes[0]
-    fixed_osl = seq_df[seq_df['random_output_len'] == osl]
+    fixed_osl = seqlen_df[seqlen_df['random_output_len'] == osl]
     ax.plot(fixed_osl['random_input_len'], fixed_osl['mean_ttft_ms'], label= 'Mean TTFT')
-
     if 'std_runs_mean_ttft_ms' in fixed_osl.columns:
         ax.fill_between(fixed_osl['random_input_len'], fixed_osl['mean_ttft_ms'] - stds * fixed_osl['std_runs_mean_ttft_ms'], fixed_osl['mean_ttft_ms'] + stds * fixed_osl['std_runs_mean_ttft_ms'], alpha=0.2, label=f'+/-{stds} std across runs')
 
     ax.set_xlabel('Input Sequence Length (tokens)', labelpad=8)
     ax.set_ylabel('TTFT (ms)', labelpad=8)
     ax.set_title('TTFT: Run-to-Run Variance', fontweight='bold', pad=15)
-    ax.text(0.5, 1.02, f'1 x A100 40GB  |  Llama-3.1-8B  |  OSL={osl}, Concurrency=1',
-            transform=ax.transAxes, ha='center', fontsize=8, color='gray')
+    subtitle(ax, gpu_type, model='Llama-3.1-8B', extra=f'OSL={osl}, Concurrency=1')
     ax.set_xticks(sorted(fixed_osl['random_input_len'].unique()))
     ax.grid(True, axis='y', alpha=0.4)
     ax.legend(fontsize=9)
 
     ax = axes[1]
-    ax.plot(batch_df['max_concurrency'], batch_df['output_throughput'], label='Mean Throughput')
+    ax.plot(concurrency_df['max_concurrency'], concurrency_df['output_throughput'], label='Mean Throughput')
 
-    if 'std_runs_output_throughput' in batch_df.columns:
-        ax.fill_between(batch_df['max_concurrency'], batch_df['output_throughput'] - stds * batch_df['std_runs_output_throughput'], batch_df['output_throughput'] + stds * batch_df['std_runs_output_throughput'], alpha=0.2, label=f'+/-{stds} std across runs')
+    if 'std_runs_output_throughput' in concurrency_df.columns:
+        ax.fill_between(concurrency_df['max_concurrency'], concurrency_df['output_throughput'] - stds * concurrency_df['std_runs_output_throughput'], concurrency_df['output_throughput'] + stds * concurrency_df['std_runs_output_throughput'], alpha=0.2, label=f'+/-{stds} std across runs')
 
     ax.set_xlabel('Concurrency (max in-flight requests)', labelpad=8)
     ax.set_ylabel('Output Throughput (tokens/s)', labelpad=8)
     ax.set_title('Throughput: Run-to-Run Variance', fontweight='bold', pad=15)
-    ax.text(0.5, 1.02, '1 x A100 40GB  |  Llama-3.1-8B  |  ISL/OSL = 512/512',
-            transform=ax.transAxes, ha='center', fontsize=8, color='gray')
-    ax.set_xticks(batch_df['max_concurrency'])
+    subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL/OSL = 512/512')
+    ax.set_xticks(concurrency_df['max_concurrency'])
     ax.set_xscale('log', base=2)
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     ax.grid(True, axis='y', alpha=0.4)
     ax.legend(fontsize=9)
     
     return fig
-    
-def plot_seqlen_4panel(df, std_across_runs=False, stds=1):
-    """4-panel summary of sequence length sweep: TTFT, ITL, throughput, E2E latency."""
-    
-    if std_across_runs:
-        metrics = [
-            ('random_input_len', 'mean_ttft_ms',      'std_runs_mean_ttft_ms',  'TTFT (ms)'),
-            ('random_output_len', 'mean_itl_ms',       'std_runs_mean_itl_ms',   'ITL (ms)'),
-            ('random_input_len', 'output_throughput',  'std_runs_output_throughput',   'Output Throughput (tokens/s)'),
-            ('random_output_len', 'mean_e2el_ms',      'std_runs_mean_e2el_ms',  'E2E Latency (ms)'),
-        ]
-    else:
-        metrics = [
-            ('random_input_len', 'mean_ttft_ms',      'std_ttft_ms',  'TTFT (ms)'),
-            ('random_output_len', 'mean_itl_ms',       'std_itl_ms',   'ITL (ms)'),
-            ('random_input_len', 'output_throughput',  None,   'Output Throughput (tokens/s)'),
-            ('random_output_len', 'mean_e2el_ms',      'std_e2el_ms',  'E2E Latency (ms)'),
-        ]
 
-    by_isl = df[df['random_input_len'] == 512]
-    by_osl = df[df['random_output_len'] == 512]
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
-    axes = axes.flatten()
+# A100 PLOTS ----------------------------------------------------
+#%% [markdown] 
+# ## A100 Sequence Length Sweep 
+data = a100_seqlen_data
+gpu_type = 'A100 40GB'
+fig = plot_input_output_heatmap(df = data,
+                                gpu_type = gpu_type,
+                                values ='mean_ttft_ms',
+                                title ='Time to First Token (TTFT) (ms)',
+                                cmap = 'coolwarm')
+fig = plot_input_output_heatmap(df = data,
+                                gpu_type = gpu_type,
+                                values = 'output_throughput',
+                                title ='Output Throughput (tokens/s)',
+                                cmap = 'coolwarm_r')
+fig = plot_input_output_heatmap(df = data,
+                                gpu_type = gpu_type,
+                                values = 'total_token_throughput',
+                                title ='Total Token Throughput (tokens/s)',
+                                cmap = 'coolwarm_r')
 
-    for ax, (xlabel, col, std_col, ylabel) in zip(axes, metrics):
-        if xlabel == 'random_input_len':
-            df = by_osl
-        else:
-            df = by_isl
-        ax.plot(df[xlabel], df[col],
-                marker='o', linewidth=2.5, markersize=6)
+fig = plot_ttft_vs_isl(df = data, gpu_type = gpu_type)
 
-        if std_col and std_col in df.columns:
-            ax.fill_between(df[xlabel],
-                            df[col] - stds*df[std_col],
-                            df[col] + stds*df[std_col],
-                            alpha=0.15, label=f'±{stds} std (within run)')
+fig = plot_e2el_vs_osl(df = data, gpu_type = gpu_type)
 
-        ax.set_xlabel(xlabel, labelpad=6)
-        ax.set_ylabel(ylabel, labelpad=6)
-        ax.set_title(ylabel)
-        ax.set_xscale('log', base=2)
-        ax.set_xticks(df[xlabel])
-        ax.grid(True, axis='y', alpha=0.4)
+#%% [markdown] 
+# ## A100 Concurrency Sweep 
+data = a100_concurrency_data
+fig = plot_metrics_vs_concurrency(df = data,
+                                  gpu_type = gpu_type,
+                                  metric = 'output_throughput',
+                                  label = 'Output Throughput (tokens/s)',
+                                  title = 'Output Throughput vs Concurrency')
+fig = plot_metrics_vs_concurrency(df = data,
+                                  metric ='mean_itl_ms', 
+                                  label ='ITL (ms)',
+                                  gpu_type = gpu_type,
+                                  title = 'ITL (ms) vs Concurrency')
+fig = plot_metrics_vs_concurrency(df = data,
+                                  gpu_type = gpu_type,
+                                  metric ='mean_ttft_ms', 
+                                  label = 'TTFT (ms)',
+                                  title = 'TTFT (ms) vs Concurrency')
+fig = plot_metrics_vs_concurrency(df = data,
+                                  gpu_type = gpu_type,
+                                  metric ='mean_tpot_ms', 
+                                  label =' TPOT (ms)',
+                                  title = 'TPOT (ms) vs Concurrency')
+fig = plot_mean_vs_p99(df = data,
+                       gpu_type = gpu_type,
+                       metric ='itl')
+fig = plot_mean_vs_p99(df = data,
+                       gpu_type = gpu_type,
+                       metric ='tpot')
 
-    fig.suptitle('Sequence Length Sweep – 1 x A100 40GB  |  Llama-3.1-8B  |  Concurrency = 1',
-                 fontsize=11, y=1.01)
-    plt.tight_layout()
-    return fig
 
-def plot_concurrency_4panel(df, std_across_runs=False, stds=1):
-    """4-panel summary of concurrency sweep: TTFT, ITL, throughput, E2E latency."""
-    
-    if std_across_runs:
-        metrics = [
-            ('mean_ttft_ms',      'std_runs_mean_ttft_ms',  'TTFT (ms)'),
-            ('mean_itl_ms',       'std_runs_mean_itl_ms',   'ITL (ms)'),
-            ('output_throughput',  'std_runs_output_throughput',   'Output Throughput (tokens/s)'),
-            ('mean_e2el_ms',      'std_runs_mean_e2el_ms',  'E2E Latency (ms)'),
-        ]
-    else:
-        metrics = [
-            ('mean_ttft_ms',      'std_ttft_ms',  'TTFT (ms)'),
-            ('mean_itl_ms',       'std_itl_ms',   'ITL (ms)'),
-            ('output_throughput',  None,           'Output Throughput (tokens/s)'),
-            ('mean_e2el_ms',      'std_e2el_ms',  'E2E Latency (ms)'),
-        ]
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
-    axes = axes.flatten()
+# V100 PLOTS ----------------------------------------------------
+#%% [markdown] 
+# ## V100 Sequence Length Sweep 
+data = v100_seqlen_data
+gpu_type = 'V100 32GB'
+fig = plot_input_output_heatmap(df = data,
+                                gpu_type = gpu_type,
+                                values ='mean_ttft_ms',
+                                title ='Time to First Token (TTFT) (ms)',
+                                cmap = 'coolwarm')
+fig = plot_input_output_heatmap(df = data,
+                                gpu_type = gpu_type,
+                                values = 'output_throughput',
+                                title ='Output Throughput (tokens/s)',
+                                cmap = 'coolwarm_r')
+fig = plot_input_output_heatmap(df = data,
+                                gpu_type = gpu_type,
+                                values = 'total_token_throughput',
+                                title ='Total Token Throughput (tokens/s)',
+                                cmap = 'coolwarm_r')
 
-    for ax, (col, std_col, ylabel) in zip(axes, metrics):
-        ax.plot(df['max_concurrency'], df[col],
-                marker='o', linewidth=2.5, markersize=6)
+fig = plot_ttft_vs_isl(df = data, gpu_type = gpu_type)
 
-        if std_col and std_col in df.columns:
-            ax.fill_between(df['max_concurrency'],
-                            df[col] - stds*df[std_col],
-                            df[col] + stds*df[std_col],
-                            alpha=0.15, label=f'±{stds} std (within run)')
+fig = plot_e2el_vs_osl(df = data, gpu_type = gpu_type)
 
-        ax.set_xlabel('Concurrency', labelpad=6)
-        ax.set_ylabel(ylabel, labelpad=6)
-        ax.set_title(ylabel)
-        ax.set_xscale('log', base=2)
-        ax.set_xticks(df['max_concurrency'])
-        ax.grid(True, axis='y', alpha=0.4)
+# COMPARISON ----------------------------------------------------
+#%% [markdown]
+# ## A100 vs V100 Comparison
+fig = plot_ttft_vs_isl_comparison(a100_df = a100_seqlen_data,
+                                  v100_df = v100_seqlen_data,
+                                  osl = 512)
 
-    fig.suptitle('Concurrency Sweep – 1 x A100 40GB  |  Llama-3.1-8B  |  ISL=512, OSL=512',
-                 fontsize=11, y=1.01)
-    plt.tight_layout()
-    return fig
+fig = plot_heatmap_comparison(a100_df = a100_seqlen_data,
+                              v100_df = v100_seqlen_data,
+                              values = 'mean_ttft_ms',
+                              title = 'Time to First Token (TTFT) (ms)',
+                              cmap = 'coolwarm')
+fig = plot_heatmap_comparison(a100_df = a100_seqlen_data,
+                              v100_df = v100_seqlen_data,
+                              values = 'output_throughput',
+                              title = 'Output Throughput (tokens/s)',
+                              cmap = 'coolwarm_r')
 
-def plot_all_plots(df):
+# RUN VARIANCE ----------------------------------------------------
+#%% [markdown]
+# ## Run Variance
+seqlen_data = a100_seqlen_data
+concurrency_data = a100_concurrency_data
+gpu_type = 'A100 40GB'
+fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
 
-    # INPUT SWEEP ttft
-    fig = plot_ttft_vs_isl(a100_data)
+seqlen_data = v100_seqlen_data
+concurrency_data = a100_concurrency_data
+gpu_type = 'V100 32GB'
+fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
 
-    # to look at trends for ISL and OSL 
-    #ig = plot_ttft_vs_isl_per_osl(a100_data)
-    #fig = plot_ttft_vs_osl_per_isl(a100_data)
 
-    # INPUT SWEEP heatmaps for all metrics
-    fig = plot_input_output_heatmap(a100_data, values='output_throughput', title='Output Throughput (tokens/s)')
-    fig = plot_input_output_heatmap(a100_data, values='total_token_throughput', title='Total Token Throughput (tokens/s)')
-    fig = plot_input_output_heatmap(a100_data, values='mean_e2el_ms', title='Average E2E Latency (ms)')
-    fig = plot_input_output_heatmap(a100_data, values='mean_itl_ms', title='ITL (ms)')
-    fig = plot_input_output_heatmap(a100_data, values='mean_tpot_ms', title='TPOT (ms)')
-    fig = plot_input_output_heatmap(a100_data, values='mean_ttft_ms', title='TTFT (ms)')
 
-    # INPUT SWEEP e2el
-    fig = plot_e2el_vs_osl(a100_data)
-    #fig = plot_e2el_vs_isl_per_osl(a100_data)
-
-    # INPUT SWEEP 4 PANEL
-    fig = plot_seqlen_4panel(a100_data, std_across_runs=True, stds=20)
-
-    # BATCH SWEEP
-    # fig = plot_metrics_vs_batch(batch_sweep_df, "mean_ttft_ms", "TTFT (ms)", "TTFT vs Concurrency")
-    # fig = plot_metrics_vs_batch(batch_sweep_df, "mean_itl_ms", "ITL (ms)", "ITL vs Concurrency")
-    # fig = plot_metrics_vs_batch(batch_sweep_df, "mean_tpot_ms", "TPOT (ms)", "TPOT vs Concurrency")
-    # fig = plot_metrics_vs_batch(batch_sweep_df, "mean_e2el_ms", "E2EL (ms)", "E2EL vs Concurrency")
-    fig = plot_metrics_vs_batch(batch_sweep_df, "output_throughput", "Output Throughput (tokens/s)", "Output Throughput Scales Nonlinearly with Concurrency")  
-    #fig = plot_metrics_vs_batch(batch_sweep_df, "total_token_throughput", "Total Token Throughput", "Total Token Throughput vs Concurrency")  
-
-    # BATCH SWEEP 4 PANEL
-    fig = plot_concurrency_4panel(batch_sweep_df)
-    fig = plot_concurrency_4panel(batch_sweep_df, std_across_runs=True, stds=1)
-
-    # BATCH SWEEP itl
-    fig = plot_mean_vs_p99(batch_sweep_df)
-    fig = plot_mean_vs_p99(batch_sweep_df, 'ttft')
-    fig = plot_mean_vs_p99(batch_sweep_df, 'tpot', title="TPOT vs Concurrency")
-
-# %%
-# for the slides / what alex liked
-fig = plot_input_output_heatmap(a100_data, values='output_throughput', title='Output Throughput (tokens/s)', cmap='coolwarm_r')
-fig = plot_input_output_heatmap(a100_data, values='total_token_throughput', title='Total Token Throughput (tokens/s)', cmap='coolwarm_r')
-fig = plot_input_output_heatmap(a100_data, values='mean_ttft_ms', title='Time to First Token (TTFT) (ms)', cmap='coolwarm')
-fig = plot_metrics_vs_batch(batch_sweep_df, "output_throughput", "Output Throughput (tokens/s)", "Output Throughput Scales Nonlinearly with Concurrency")  
-
-fig = plot_mean_vs_p99(batch_sweep_df, title="KV Cache Saturation Increases ITL Tail Latency")
-fig = plot_mean_vs_p99(batch_sweep_df, metric="tpot" ,title="TPOT vs Concurrency")
-fig = plot_mean_vs_p99(batch_sweep_df, metric="itl" ,title="ITL vs Concurrency")
-
-fig = plot_run_variance(a100_data, batch_sweep_df, stds=1)
-# %%
-fig = plot_run_variance(a100_data, batch_sweep_df, stds=5, osl=128)
-fig = plot_run_variance(a100_data, batch_sweep_df, stds=5, osl=256)
-fig = plot_run_variance(a100_data, batch_sweep_df, stds=5, osl=512)
-fig = plot_run_variance(a100_data, batch_sweep_df, stds=5, osl=1024)
-fig = plot_run_variance(a100_data, batch_sweep_df, stds=5, osl=2048)
 # %%
