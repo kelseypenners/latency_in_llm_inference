@@ -62,6 +62,58 @@ def parse_throughput_json(filepath):
         'tokens per s': data['tokens_per_second']
     }
 
+def parse_itl_distributions(filepath):
+    """ parse summary json files for itl distributions """
+
+    with open(filepath, 'r') as f:
+        summary_data = json.load(f)
+
+    results = []
+    for run in summary_data:
+        if 'itls' not in run:
+            continue
+        itls_flat = [itl * 1000 for itl in sum(run['itls'], [])] 
+        results.append({
+            'max_concurrency': run['max_concurrency'],
+            'run_number': run['run_number'],
+            'itls_ms': itls_flat
+        })
+    return results
+
+def get_itl_distributions(results_dir):
+    """ get itl distributions from a dir with summary.json files """
+    results_dir = Path(results_dir)
+    gpu_type = results_dir.name
+
+    all_results = []
+    # parse all summary files in results dir
+    for file in results_dir.rglob('summary*.json'):
+        run_results = parse_itl_distributions(file)
+        for run in run_results:
+            run['gpu_type'] = gpu_type
+        all_results.extend(run_results)
+
+    df = pd.DataFrame(all_results)
+    df = df.sort_values(['gpu_type', 'max_concurrency', 'run_number'])
+    col = df.pop('gpu_type')
+    df.insert(0, 'gpu_type', col)
+    return df
+
+def save_itl_distributions(gpu_dirs, output_dir):
+    """ parses and saves itl data as parquet """
+
+    output_dir = Path(output_dir)
+    all_gpu_dfs = []
+
+    for gpu_dir in gpu_dirs:
+        gpu_df = get_itl_distributions(gpu_dir)
+        all_gpu_dfs.append(gpu_df)
+        print(f"{Path(gpu_dir).name}: {len(gpu_df)} runs collected")
+
+    df = pd.concat(all_gpu_dfs).sort_values(['gpu_type', 'max_concurrency', 'run_number'])
+    df.to_parquet(output_dir / 'itl_distributions.parquet', index=False)
+    print(f"\nsaved itl_distributions.parquet ({len(df)} total runs)")
+
 # fields to keep from sweep json files
 KEEP_FIELDS = ["random_input_len", "random_output_len", 
                "run_number", "max_concurrency",
@@ -107,7 +159,6 @@ def get_results_sweep(results_dir):
     return all_results_df
 
 def average_sweep_results(sweep_df):
-
     """ average sweep results across runs of same configs """
     df = sweep_df.copy()
 
@@ -155,14 +206,19 @@ def save_results_sweep(gpu_dirs, output_dir, sort_cols):
     
 if __name__ == "__main__":
     base = Path('./results/single-gpu')
-    save_results_sweep(
-        gpu_dirs=[base / 'seqlen-sweep/a100', base / 'seqlen-sweep/v100'],
-        output_dir=base / 'seqlen-sweep',
-        sort_cols=['gpu_type', 'random_input_len', 'random_output_len']
-    )
+    # save_results_sweep(
+    #     gpu_dirs=[base / 'seqlen-sweep/a100', base / 'seqlen-sweep/v100'],
+    #     output_dir=base / 'seqlen-sweep',
+    #     sort_cols=['gpu_type', 'random_input_len', 'random_output_len']
+    # )
 
-    save_results_sweep(
+    # save_results_sweep(
+    #     gpu_dirs=[base / 'concurrency-sweep/a100'],
+    #     output_dir=base / 'concurrency-sweep',
+    #     sort_cols=['gpu_type', 'max_concurrency']
+    # )
+
+    save_itl_distributions(
         gpu_dirs=[base / 'concurrency-sweep/a100'],
         output_dir=base / 'concurrency-sweep',
-        sort_cols=['gpu_type', 'max_concurrency']
     )
