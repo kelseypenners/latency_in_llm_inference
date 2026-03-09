@@ -7,9 +7,15 @@ import seaborn as sns
 
 from plot_utils import *
 
-# load data
+# load sequence length sweep data
 seqlen_df = pd.read_csv('../results/single-gpu/seqlen-sweep/averaged_seqlen_sweep_results.csv')
-concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/averaged_concurrency_sweep_results.csv')
+# load baseline concurrency sweep data
+concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/baseline/averaged_concurrency_sweep_baseline_results.csv')
+# load fine-grained concurrency sweep data
+concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/fine-grained/averaged_concurrency_sweep_fine_grained_results.csv')
+
+# load itl data
+itldistributions_path = '../results/single-gpu/concurrency-sweep/fine-grained/itl_distributions.parquet'
 
 # gpu-specific
 a100_seqlen_data = seqlen_df[seqlen_df['gpu_type'] == 'a100'].copy()
@@ -18,9 +24,9 @@ v100_seqlen_data = seqlen_df[seqlen_df['gpu_type'] == 'v100'].copy()
 a100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'a100'].copy()
 v100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'v100'].copy()
 
-itldistributions_path = '../results/single-gpu/concurrency-sweep/itl_distributions.parquet'
-# SEQLEN SWEEP PLOTS ----------------------------------------------------
 
+
+# SEQLEN SWEEP PLOTS ----------------------------------------------------
 def plot_input_output_heatmap(df, gpu_type, values, title, cmap='Oranges'):
     """ heatmap of metric across all ISL/OSL configs """
     
@@ -51,7 +57,7 @@ def plot_heatmap_comparison(a100_df, v100_df, values, title, cmap='Oranges', sam
         vmin = None 
         vmax = None
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(15, 7))
     for ax, pivot, gpu_type in zip(axes, pivots, gpu_types):
         sns.heatmap(pivot, annot=True, fmt='.1f', cmap=cmap, ax=ax, linecolor='white', 
                     linewidths=0.7, annot_kws={"size": 9}, vmin=vmin, vmax=vmax)
@@ -195,8 +201,8 @@ def plot_metrics_vs_concurrency(df, gpu_type, metric, label, title):
     subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
     ax.set_xlabel('Concurrency (max in-flight requests)')
     ax.set_ylabel(label)
-    ax.set_xscale('log', base=2)
     ax.set_xticks(df['max_concurrency'])
+    ax.set_xscale('log', base=2)
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     ax.grid(True, axis='y', alpha=0.4)
     plt.tight_layout()
@@ -206,7 +212,7 @@ def plot_mean_vs_p99(df, gpu_type, metric="itl", title=None, p90=True):
     """ mean vs P99 for ITL vs concurrency """
     title = title or f'{metric.upper()}: Mean vs Tail Latency vs Concurrency'
 
-    fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(df['max_concurrency'], df[f'mean_{metric}_ms'], marker='o', linewidth=2, label='Mean')
     ax.plot(df['max_concurrency'], df[f'p99_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P99 (slowest 1% of tokens)')
     ax.plot(df['max_concurrency'], df[f'p90_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P90 (slowest 10% of tokens)')
@@ -227,7 +233,7 @@ def plot_mean_vs_p99(df, gpu_type, metric="itl", title=None, p90=True):
 def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512):
     """ TTFT run variance (seqlen) and throughput run variance (concurrency) """
     
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
 
     # TTFT variance
     ax = axes[0]
@@ -263,8 +269,9 @@ def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512):
     return fig
 
 def plot_itl_boxplot(parquet_path, gpu_type, title=None):
-    """ per-token ITL distribution as box-whisker plot across concurrency levels """
-    title = title or 'Per-Token ITL Distribution vs Concurrency'
+    """ ITL distribution box-whisker plot across concurrency levels """
+
+    title = title or 'ITL Distribution vs Concurrency'
 
     df = pd.read_parquet(parquet_path)
     if gpu_type.lower().replace(' ', '') in ['a10040gb', 'a100']:
@@ -297,6 +304,79 @@ def plot_itl_boxplot(parquet_path, gpu_type, title=None):
     ax.set_xlabel('Concurrency (max in-flight requests)', labelpad=8)
     ax.set_ylabel('ITL (ms)', labelpad=8)
     ax.grid(True, axis='y', alpha=0.4)
+    ax.tick_params(axis='x', rotation=45)
+    plt.tight_layout()
+    return fig
+
+def plot_mean_vs_p99_comparison(a100_df, v100_df, metric='itl', title=None):
+    """ mean vs P99 comparison between GPUs """
+
+    title = title or f'{metric.upper()}: Mean vs Tail Latency - A100 vs V100'
+    
+    dfs = [a100_df, v100_df]
+    gpu_types = ['A100 40GB', 'V100 32GB']
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharey=True)
+    for ax, df, gpu_type in zip(axes, dfs, gpu_types):
+        ax.plot(df['max_concurrency'], df[f'mean_{metric}_ms'], marker='o', linewidth=2, label='Mean')
+        ax.plot(df['max_concurrency'], df[f'p99_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P99 (slowest 1%)')
+        ax.plot(df['max_concurrency'], df[f'p90_{metric}_ms'], marker='s', linewidth=2, linestyle='--', label='P90 (slowest 10%)')
+        ax.fill_between(df['max_concurrency'], df[f'mean_{metric}_ms'], df[f'p99_{metric}_ms'], alpha=0.12, label='Mean / P99 Gap')
+        ax.set_title(gpu_type, fontweight='bold', pad=15)
+        ax.set_xlabel('Concurrency', labelpad=8)
+        ax.set_ylabel(f'{metric.upper()} (ms)', labelpad=8)
+        ax.set_xticks(df['max_concurrency'])
+        ax.set_xscale('log', base=2)
+        ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+        ax.grid(True, axis='y', alpha=0.4)
+        ax.legend(fontsize=9)
+    fig.suptitle(title, fontweight='bold')
+    fig.text(0.5, 0.93, 'Llama-3.1-8B  |  ISL / OSL = 512 / 512',
+             ha='center', va='top', fontsize=10, color='grey')
+    plt.tight_layout()
+    return fig
+
+
+def plot_itl_boxplot_comparison(parquet_path, title=None):
+    """ ITL distribution box-whisker comparison between A100 and V100 """
+
+    title = title or 'ITL Distribution vs Concurrency - A100 vs V100'
+
+    df_all = pd.read_parquet(parquet_path)
+    gpu_types = ['a100', 'v100']
+    gpu_labels = ['A100 40GB', 'V100 32GB']
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharey=True)
+    for ax, gpu, label in zip(axes, gpu_types, gpu_labels):
+        df = df_all[df_all['gpu_type'] == gpu]
+        df_exploded = df.explode('itls_ms')
+        df_exploded['itls_ms'] = df_exploded['itls_ms'].astype(float)
+
+        concurrency_levels = sorted(df_exploded['max_concurrency'].unique())
+        data = [df_exploded[df_exploded['max_concurrency'] == c]['itls_ms'].values for c in concurrency_levels]
+
+        bp = ax.boxplot(data, labels=concurrency_levels, showfliers=False, patch_artist=True)
+        for patch in bp['boxes']:
+            patch.set_facecolor('#4C9BE8')
+            patch.set_alpha(0.7)
+        for median in bp['medians']:
+            median.set_color('#E85C4C')
+            median.set_linewidth(2)
+        for whisker in bp['whiskers']:
+            whisker.set_color('#333333')
+            whisker.set_linewidth(1.2)
+        for cap in bp['caps']:
+            cap.set_color('#333333')
+            cap.set_linewidth(1.2)
+        ax.set_title(label, fontweight='bold', pad=15)
+        ax.set_xlabel('Concurrency (max in-flight requests)', labelpad=8)
+        ax.set_ylabel('ITL (ms)', labelpad=8)
+        ax.grid(True, axis='y', alpha=0.4)
+        ax.tick_params(axis='x', rotation=45)
+
+    fig.suptitle(title, fontweight='bold')
+    fig.text(0.5, 0.93, 'Llama-3.1-8B  |  ISL / OSL = 512 / 512',
+             ha='center', va='top', fontsize=10, color='grey')
     plt.tight_layout()
     return fig
 
@@ -354,6 +434,8 @@ fig = plot_mean_vs_p99(df = data,
 fig = plot_mean_vs_p99(df = data,
                        gpu_type = gpu_type,
                        metric ='tpot')
+plot_itl_boxplot(parquet_path = itldistributions_path, 
+                 gpu_type = 'A100 40GB')
 
 
 # V100 PLOTS ----------------------------------------------------
@@ -381,6 +463,39 @@ fig = plot_ttft_vs_isl(df = data, gpu_type = gpu_type)
 
 fig = plot_e2el_vs_osl(df = data, gpu_type = gpu_type)
 
+#%% [markdown] 
+# ## V100 Concurrency Sweep 
+data = v100_concurrency_data
+fig = plot_metrics_vs_concurrency(df = data,
+                                  gpu_type = gpu_type,
+                                  metric = 'output_throughput',
+                                  label = 'Output Throughput (tokens/s)',
+                                  title = 'Output Throughput vs Concurrency')
+fig = plot_metrics_vs_concurrency(df = data,
+                                  metric ='mean_itl_ms', 
+                                  label ='ITL (ms)',
+                                  gpu_type = gpu_type,
+                                  title = 'ITL (ms) vs Concurrency')
+fig = plot_metrics_vs_concurrency(df = data,
+                                  gpu_type = gpu_type,
+                                  metric ='mean_ttft_ms', 
+                                  label = 'TTFT (ms)',
+                                  title = 'TTFT (ms) vs Concurrency')
+fig = plot_metrics_vs_concurrency(df = data,
+                                  gpu_type = gpu_type,
+                                  metric ='mean_tpot_ms', 
+                                  label =' TPOT (ms)',
+                                  title = 'TPOT (ms) vs Concurrency')
+fig = plot_mean_vs_p99(df = data,
+                       gpu_type = gpu_type,
+                       metric ='itl')
+fig = plot_mean_vs_p99(df = data,
+                       gpu_type = gpu_type,
+                       metric ='tpot')
+plot_itl_boxplot(parquet_path = itldistributions_path, 
+                 gpu_type = 'V100 32GB')
+
+
 # COMPARISON ----------------------------------------------------
 #%% [markdown]
 # ## A100 vs V100 Comparison
@@ -398,6 +513,13 @@ fig = plot_heatmap_comparison(a100_df = a100_seqlen_data,
                               values = 'output_throughput',
                               title = 'Output Throughput (tokens/s)',
                               cmap = 'coolwarm_r')
+plot_mean_vs_p99_comparison(a100_df=a100_concurrency_data,
+                            v100_df=v100_concurrency_data,
+                            metric='itl')
+plot_mean_vs_p99_comparison(a100_df=a100_concurrency_data,
+                            v100_df=v100_concurrency_data,
+                            metric='tpot')
+plot_itl_boxplot_comparison(parquet_path=itldistributions_path)
 
 # RUN VARIANCE ----------------------------------------------------
 #%% [markdown]
@@ -411,8 +533,5 @@ seqlen_data = v100_seqlen_data
 concurrency_data = a100_concurrency_data
 gpu_type = 'V100 32GB'
 fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
-
-plot_itl_boxplot(parquet_path = itldistributions_path, 
-                 gpu_type = 'A100 40GB')
 
 # %%
