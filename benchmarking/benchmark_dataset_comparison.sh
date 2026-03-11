@@ -13,25 +13,10 @@ echo ""
 
 CUDA_VISIBLE_DEVICES=$GPU_ID vllm bench sweep serve \
     --serve-cmd "vllm serve ${MODEL} --port 8000 --gpu-memory-utilization 0.85" \
-    --bench-cmd "vllm bench serve --backend openai --model ${MODEL} --save-result --save-detailed --metric-percentiles 50,75,90,99 --num-warmups 20 --ignore-eos" \
-    --num-runs 3 \
+    --bench-cmd "vllm bench serve --backend openai --model ${MODEL} --save-result --save-detailed --num-warmups 10 --ignore-eos" \
+    --num-runs 10 \
     --bench-params "./bench_dataset_params.json" \
     --output-dir $OUTDIR
-
-echo "========================================"
-echo "benchmark suite completed!"
-echo "results saved to: $OUTDIR"
-
-
-
-
-CUDA_VISIBLE_DEVICES=$GPU_ID vllm bench sweep serve \
-    --serve-cmd "vllm serve ${MODEL} --port 8000 --gpu-memory-utilization 0.85 --max-num-seqs 1024 --max-model-len 80000" \
-    --bench-cmd "vllm bench serve --backend openai --model ${MODEL} --dataset-name random --random-input-len 512 --random-output-len 512 --num-prompts 1000 --save-result --save-detailed --metric-percentiles 75,90,99 --num-warmups 20 --ignore-eos --ready-check-timeout-sec 2000" \
-    --num-runs 2 \
-    --bench-params "./bench_concurrency_params.json
-    " \
-    --output-dir $OUTDIR\
 
 echo "========================================"
 echo "benchmark suite completed!"
