@@ -1,0 +1,8 @@
+[
+    {
+        "enable-prefix-caching": true
+    },
+    {
+        "enable-prefix-caching": false
+    }
+]

@@ -3,8 +3,8 @@
 MODEL="../Llama-3.1-8B"
 GPU_ID=7
 GPU_TYPE="a100"
-DATE="23-02-2026"
-OUTDIR="../results/single-gpu/${DATE}/${GPU_TYPE}/"
+EXPERIMENT="seqlen-sweep"
+OUTDIR="../results/single-gpu/${EXPERIMENT}/${GPU_TYPE}/"
 
 mkdir -p $OUTDIR
 

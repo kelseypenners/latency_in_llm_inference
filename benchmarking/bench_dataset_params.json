@@ -1,23 +1,17 @@
-[
+[    
+    {
+        "dataset-name": "sharegpt",
+        "dataset-path": "./random_prompt_dataset.json",
+        "sharegpt-output-len": 64
+    },
     {
         "dataset-name": "sharegpt",
         "dataset-path": "./easy_prompt_dataset.json",
-        "sharegpt-output-len": 64,
-        "num-prompts": 1,
-        "max-concurrency": 1
+        "sharegpt-output-len": 64
     },
     {
         "dataset-name": "sharegpt",
         "dataset-path": "./harder_prompt_dataset.json",
-        "sharegpt-output-len": 64,
-        "num-prompts": 1,
-        "max-concurrency": 1
-    },
-    {
-        "dataset-name": "random",
-        "random-input-len": 513,
-        "random-output-len": 64,
-        "num-prompts": 1,
-        "max-concurrency": 1
+        "sharegpt-output-len": 64
     }
 ]

@@ -13,9 +13,10 @@ echo ""
 
 CUDA_VISIBLE_DEVICES=$GPU_ID vllm bench sweep serve \
     --serve-cmd "vllm serve ${MODEL} --port 8000 --gpu-memory-utilization 0.85" \
-    --bench-cmd "vllm bench serve --backend openai --model ${MODEL} --save-result --save-detailed --num-warmups 10 --ignore-eos" \
-    --num-runs 10 \
+    --bench-cmd "vllm bench serve --backend openai --model ${MODEL} --num-prompts 100 --save-result --save-detailed --num-warmups 20 --ignore-eos --max-concurrency 1" \
+    --num-runs 3 \
     --bench-params "./bench_dataset_params.json" \
+    --serve-params "./serve_dataset_params.json" \
     --output-dir $OUTDIR
 
 echo "========================================"
