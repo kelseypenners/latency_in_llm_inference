@@ -11,3 +11,13 @@ def save_fig(fig, filename, output_dir = "./"):
     output_dir = Path(output_dir)
     fig.savefig(f'{output_dir}/{filename}.png', dpi=300, bbox_inches='tight')
     print(f"saved: {filename}")
+
+def get_prompt_type(row):
+    path = str(row.get('dataset-path', '') or '')
+    if 'easy' in path:
+        return 'easy'
+    elif 'hard' in path:
+        return 'hard'
+    elif str(row.get('dataset-name', '')).lower() == 'random':
+        return 'random'
+    return None
