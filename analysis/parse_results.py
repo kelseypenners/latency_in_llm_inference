@@ -206,22 +206,51 @@ def save_results_sweep(gpu_dirs, output_dir, sort_cols):
 
     print(f"saved \n{output_name}_results.csv ({len(sweep)} total runs)")
     print(f"saved averaged_{output_name}_results.csv({len(averaged_sweep)} total configs)\n")
+
+def save_prompt_type(results_dir):
+    """ creates prompt type column in dataset-comparison summary csv """
+
+    df = pd.read_csv(results_dir)
+    
+    def classify(path):
+        if 'harder_' in str(path):
+            return 'hard'
+        elif 'easy_' in str(path):
+            return 'easy'
+        else:
+            return 'random'
+
+    df['prompt_type'] = df['dataset-path'].apply(classify)
+    df.to_csv(results_dir)
+    print(f"saved {results_dir}")
+
     
 if __name__ == "__main__":
     base = Path('./results/single-gpu')
-    save_results_sweep(
-        gpu_dirs=[base / 'seqlen-sweep/a100', base / 'seqlen-sweep/v100'],
-        output_dir=base / 'seqlen-sweep',
-        sort_cols=['gpu_type', 'random_input_len', 'random_output_len']
-    )
+    # save_results_sweep(
+    #     gpu_dirs=[base / 'seqlen-sweep/a100', base / 'seqlen-sweep/v100'],
+    #     output_dir=base / 'seqlen-sweep',
+    #     sort_cols=['gpu_type', 'random_input_len', 'random_output_len']
+    # )
 
-    save_results_sweep(
-        gpu_dirs=[base / 'concurrency-sweep/fine-grained/a100', base / 'concurrency-sweep/fine-grained/v100'],
-        output_dir=base / 'concurrency-sweep/fine-grained',
-        sort_cols=['gpu_type', 'max_concurrency']
-    )
+    # save_results_sweep(
+    #     gpu_dirs=[base / 'concurrency-sweep/fine-grained/a100', base / 'concurrency-sweep/fine-grained/v100'],
+    #     output_dir=base / 'concurrency-sweep/fine-grained',
+    #     sort_cols=['gpu_type', 'max_concurrency']
+    # )
 
-    save_itl_distributions(
-        gpu_dirs=[base / 'concurrency-sweep/fine-grained/a100', base / 'concurrency-sweep/fine-grained/v100'],
-        output_dir=base / 'concurrency-sweep/fine-grained',
-    )
+    # save_itl_distributions(
+    #     gpu_dirs=[base / 'concurrency-sweep/fine-grained/a100', base / 'concurrency-sweep/fine-grained/v100'],
+    #     output_dir=base / 'concurrency-sweep/fine-grained',
+    # )
+
+    # save_results_sweep(
+    #     gpu_dirs=[base / 'dataset-comparison/a100'],
+    #     output_dir=base / 'dataset-comparison',
+    #     sort_cols=['gpu_type', 'max_concurrency', 'random_input_len',]
+    # )
+
+
+    save_prompt_type('./results/single-gpu/dataset-comparison/prompttype_prefixcache_results.csv')
+    save_prompt_type('./results/single-gpu/dataset-comparison/prompttype_2runs_100prompts.csv')
+    save_prompt_type('./results/single-gpu/dataset-comparison/prompttype_10runs_1prompt.csv')

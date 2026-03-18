@@ -17,17 +17,25 @@ def compute_prefill_rate(df, gpu_type, osl=512):
 
 
 
-# load data
-sweep_df = pd.read_csv('../results/single-gpu/23-02-2026/averaged_sweep_results.csv')
-batch_sweep_df = pd.read_csv('../results/single-gpu/25-02-2026/averaged_concurrency_sweep_results.csv')
-
-batch_sweep_df = pd.read_csv('../results/single-gpu/27-02-2026/averaged_batch_sweep_results.csv')
+# load sequence length sweep data
+seqlen_df = pd.read_csv('../results/single-gpu/seqlen-sweep/averaged_seqlen_sweep_results.csv')
+# load baseline concurrency sweep data
+concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/baseline/averaged_concurrency_sweep_baseline_results.csv')
+# load fine-grained concurrency sweep data
+concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/fine-grained/averaged_concurrency_sweep_fine_grained_results.csv')
 
 # gpu-specific
-a100_data = sweep_df[sweep_df['gpu_type'] == 'a100'].copy()
+a100_data = seqlen_df[seqlen_df['gpu_type'] == 'a100'].copy()
+v100_data = seqlen_df[seqlen_df['gpu_type'] == 'v100'].copy()
 
 compute_prefill_rate(a100_data, gpu_type='a100', osl=128)
 compute_prefill_rate(a100_data, gpu_type='a100', osl=256)
 compute_prefill_rate(a100_data, gpu_type='a100', osl=512)
 compute_prefill_rate(a100_data, gpu_type='a100', osl=1024)
 compute_prefill_rate(a100_data, gpu_type='a100', osl=2048)
+
+compute_prefill_rate(v100_data, gpu_type='v100', osl=128)
+compute_prefill_rate(v100_data, gpu_type='v100', osl=256)
+compute_prefill_rate(v100_data, gpu_type='v100', osl=512)
+compute_prefill_rate(v100_data, gpu_type='v100', osl=1024)
+compute_prefill_rate(v100_data, gpu_type='v100', osl=2048)
