@@ -1,0 +1,66 @@
+[
+    {
+        "max-concurrency": 4,
+        "num-prompts": 100
+    },
+    {
+        "max-concurrency": 4,
+        "num-prompts": 500
+    },
+    {
+        "max-concurrency": 8,
+        "num-prompts": 100
+    },
+    {
+        "max-concurrency": 8,
+        "num-prompts": 500
+    },
+    {
+        "max-concurrency": 16,
+        "num-prompts": 100
+    },
+    {
+        "max-concurrency": 16,
+        "num-prompts": 500
+    },
+    {
+        "max-concurrency": 32,
+        "num-prompts": 100
+    },
+    {
+        "max-concurrency": 32,
+        "num-prompts": 500
+    },
+    {
+        "max-concurrency": 64,
+        "num-prompts": 100
+    },
+    {
+        "max-concurrency": 64,
+        "num-prompts": 500
+    },
+    {
+        "max-concurrency": 128,
+        "num-prompts": 500
+    },
+    {
+        "max-concurrency": 128,
+        "num-prompts": 1000
+    },
+    {
+        "max-concurrency": 256,
+        "num-prompts": 500
+    },
+    {
+        "max-concurrency": 256,
+        "num-prompts": 1000
+    },
+    {
+        "max-concurrency": 512,
+        "num-prompts": 2000
+    },
+    {
+        "max-concurrency": 512,
+        "num-prompts": 4000
+    }
+]
