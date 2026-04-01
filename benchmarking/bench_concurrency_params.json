@@ -1,68 +1,90 @@
 [
     {
-        "max-concurrency": 4
+        "max-concurrency": 4,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 6
+        "max-concurrency": 6,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 8
+        "max-concurrency": 8,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 12
+        "max-concurrency": 12,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 16
+        "max-concurrency": 16,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 24
+        "max-concurrency": 24,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 32
+        "max-concurrency": 32,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 48
+        "max-concurrency": 48,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 64
+        "max-concurrency": 64,
+        "num-prompts": 500
     },
     {
-        "max-concurrency": 80
+        "max-concurrency": 80,
+        "num-prompts": 1000
     },
     {
-        "max-concurrency": 96
+        "max-concurrency": 96,
+        "num-prompts": 1000
     },
     {
-        "max-concurrency": 112
+        "max-concurrency": 112,
+        "num-prompts": 1000
     },
     {
-        "max-concurrency": 128
+        "max-concurrency": 128,
+        "num-prompts": 1000
     },
     {
-        "max-concurrency": 144
+        "max-concurrency": 144,
+        "num-prompts": 1000
     },
     {
-        "max-concurrency": 160
+        "max-concurrency": 160,
+        "num-prompts": 2000
     },
     {
-        "max-concurrency": 176
+        "max-concurrency": 176,
+        "num-prompts": 2000
     },
     {
-        "max-concurrency": 192
+        "max-concurrency": 192,
+        "num-prompts": 2000
     },
     {
-        "max-concurrency": 256
+        "max-concurrency": 256,
+        "num-prompts": 2000
     },
     {
-        "max-concurrency": 320
+        "max-concurrency": 320,
+        "num-prompts": 3000
     },
     {
-        "max-concurrency": 384
+        "max-concurrency": 384,
+        "num-prompts": 3000
     },
     {
-        "max-concurrency": 448
+        "max-concurrency": 448,
+        "num-prompts": 3000
     },
     {
-        "max-concurrency": 512
+        "max-concurrency": 512,
+        "num-prompts": 3000
     }
 ]
