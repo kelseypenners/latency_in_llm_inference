@@ -1,0 +1,25 @@
+{
+    "experiment": "dataset-comparison",
+    "experiment_type": "single-gpu",
+    "gpu_ids": "7",
+    "gpu_type": "a100",
+    "model": "../Llama-3.1-8B",
+    "results": "/mnt/kpenners/results",
+    "tp": 2,
+    "runs": 3,
+    "gpu_mem": 0.85,
+    "serve_cmd_extra": "--port 8000 --max-num-seqs 1024",
+    "bench_cmd_extra": "--backend openai --num-prompts 1000 --save-result --num-warmups 20 --ignore-eos",
+    "bench_params": [
+        {"random_input_len": 512, "random_output_len": 512, "dataset-name": "random"},
+        {"random_input_len": 1024, "random_output_len": 512, "dataset-name": "random"}
+    ],
+    "serve_params": [
+        {"enable-prefix-caching": true},
+        {"enable-prefix-caching": false}
+    ],
+    "disable_p2p": "true",
+    "network_fallback": "true",
+    "dry_run": "true"
+
+}
