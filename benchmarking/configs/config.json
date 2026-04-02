@@ -1,5 +1,5 @@
 {
-    "experiment": "dataset-comparison",
+    "experiment": "example",
     "experiment_type": "single-gpu",
     "gpu_ids": "7",
     "gpu_type": "a100",

@@ -1,0 +1,20 @@
+{
+    "experiment": "test",
+    "experiment_type": "single-gpu",
+    "gpu_ids": "6,7",
+    "gpu_type": "a100",
+    "model": "../Llama-3.1-8B",
+    "results": "../results",
+    "runs": 1,
+    "gpu_mem": 0.85,
+    "tp": 2,
+    "serve_cmd_extra": "--port 8000",
+    "bench_cmd_extra": "--backend openai --num-prompts 30 --save-result --num-warmups 5 --ignore-eos --max-concurrency 1",
+    "bench_params": [
+        {"random_input_len": 512, "random_output_len": 512, "dataset-name": "random"}
+    ],
+    "disable_p2p": "true",
+    "network_fallback": "true",
+    "dry_run": ""
+
+}
