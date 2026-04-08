@@ -10,6 +10,7 @@
     "serve_cmd_extra": "--port 8000 --max-num-seqs 1024 --max-model-len 80000",
     "bench_cmd_extra": "--backend openai --save-result --dataset-name random --random-input-len 512 --random-output-len 512  --metric-percentiles 75,90,99 --num-warmups 20 --ignore-eos --ready-check-timeout-sec 2000",
     "bench_params": [
+        {"max-concurrency":1,"num-prompts":100},
         {"max-concurrency":4,"num-prompts":500},
         {"max-concurrency":6,"num-prompts":500},
         {"max-concurrency":8,"num-prompts":500},
@@ -31,7 +32,10 @@
         {"max-concurrency":320,"num-prompts":3000},
         {"max-concurrency":384,"num-prompts":3000},
         {"max-concurrency":448,"num-prompts":3000},
-        {"max-concurrency":512,"num-prompts":3000}],
+        {"max-concurrency":512,"num-prompts":3000},
+        {"max-concurrency":640,"num-prompts":3000},
+        {"max-concurrency":768,"num-prompts":3000},
+        {"max-concurrency":1024,"num-prompts":3000}],
     "dry_run": "true"
 
 }
