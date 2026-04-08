@@ -1,6 +1,7 @@
 {
     "experiment": "concurrency-sweep",
     "experiment_type": "multi-gpu",
+    "label": "mainsweep",
     "gpu_ids": "6,7",
     "gpu_type": "a100",
     "tp": 2,
@@ -27,5 +28,4 @@
         {"max-concurrency": 768,  "num-prompts": 5000},
         {"max-concurrency": 1024, "num-prompts": 5000}],
     "dry_run": "false"
-
 }
