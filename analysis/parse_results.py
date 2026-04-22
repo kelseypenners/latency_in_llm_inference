@@ -224,6 +224,63 @@ def save_prompt_type(results_dir):
     df.to_csv(results_dir)
     print(f"saved {results_dir}")
 
+def aggregate_experiment_csvs(experiment_dir, output_filename=None, glob_pattern="*summary.csv"):
+    """ aggregate all CSVs within an experiment folder into a single CSV """
+    
+    experiment_dir = Path(experiment_dir)
+    output_path = experiment_dir / (output_filename or 'aggregated.csv')
+
+    all_dfs = []
+    for csv_file in sorted(experiment_dir.rglob(glob_pattern)):
+        # skip any previously aggregated output to avoid duplicating on re-runs
+        if csv_file.name.startswith('aggregated'):
+            continue
+        try:
+            df = pd.read_csv(csv_file)
+            all_dfs.append(df)
+        except Exception as e:
+            print(f"  skipping {csv_file}: {e}")
+
+    if not all_dfs:
+        print(f"no CSVs found in {experiment_dir}")
+        return pd.DataFrame()
+
+    combined = pd.concat(all_dfs, ignore_index=True)
+    if 'Unnamed: 0' in combined.columns:
+        combined = combined.drop(columns=['Unnamed: 0'])
+
+    combined.to_csv(output_path, index=False)
+    print(f"saved {output_path} ({len(combined)} rows)")
+    return combined
+
+def average_results(df, output_path=None):
+    """ average sweep results across runs of same configs """
+    df = df.copy()
+
+    # columns that identify a configuration
+    group_cols = [
+        'max_concurrency',
+        'model_id', 
+        'tokenizer_id', 
+        'backend', 
+        'endpoint_type', 
+        'label',
+    ]
+    group_cols = [c for c in group_cols if c in df.columns]
+
+    # drop redundant columns
+    drop_cols = ['Unnamed: 0', 'date', 'run_number', 'num_prompts',]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+
+    # average remain columns by config
+    avg_cols = [c for c in df.columns if c not in group_cols]
+    averaged = df.groupby(group_cols, dropna=False)[avg_cols]\
+        .mean().reset_index()
+    
+    if output_path:
+        averaged.to_csv(output_path, index=False)
+        print(f"saved {output_path} ({len(averaged)} rows)")
+    return averaged
     
 if __name__ == "__main__":
     base = Path('./results/single-gpu')
@@ -250,7 +307,12 @@ if __name__ == "__main__":
     #     sort_cols=['gpu_type', 'max_concurrency', 'random_input_len',]
     # )
 
+    # base = Path('./results/multi-gpu')
+    # combined = aggregate_experiment_csvs(
+    #     experiment_dir=base / 'concurrency-sweep/a100',
+    #     output_filename='aggregated_concurrency_sweep.csv',
+    # )
 
-    save_prompt_type('./results/single-gpu/dataset-comparison/prompttype_prefixcache_results.csv')
-    save_prompt_type('./results/single-gpu/dataset-comparison/prompttype_2runs_100prompts.csv')
-    save_prompt_type('./results/single-gpu/dataset-comparison/prompttype_10runs_1prompt.csv')
+    # average_results(combined, output_path=Path(base / 'concurrency-sweep/a100' / 'averaged_concurrency_sweep.csv'))
+
+
