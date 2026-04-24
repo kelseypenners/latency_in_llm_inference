@@ -43,7 +43,6 @@ if jq -e '.serve_params' "$CONFIG" > /dev/null 2>&1; then
     jq '.serve_params' "$CONFIG" > "$serve_params_file"
     serve_params_flag="--serve-params $serve_params_file"
 fi
-trap "rm -f ${bench_params_file:-} ${serve_params_file:-}" EXIT
 
 topology=$(nvidia-smi topo -m)
 
@@ -78,6 +77,28 @@ dry_run_flag=""
 if [ "$dry_run" = "true" ]; then
     dry_run_flag="--dry-run"
 fi
+
+# GPU power usage logging
+power_log="${outdir}/gpu_power.csv"
+
+# log every 5 seconds
+nvidia-smi \
+  --query-gpu=timestamp,index,power.draw \
+  --format=csv,noheader,nounits \
+  -l 5 > "$power_log" &
+
+POWER_LOG_PID=$!
+
+# ensure logger is killed even if script exits early
+cleanup() {
+    rm -f "${bench_params_file:-}" "${serve_params_file:-}"
+    if ps -p $POWER_LOG_PID > /dev/null 2>&1; then
+        kill $POWER_LOG_PID
+        wait $POWER_LOG_PID 2>/dev/null
+        echo "power logging stopped"
+    fi
+}
+trap cleanup EXIT
 
 echo "================================================================================"
 echo "experiment    : $experiment ($experiment_type) $label"
