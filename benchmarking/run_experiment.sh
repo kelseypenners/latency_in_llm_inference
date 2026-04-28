@@ -26,6 +26,7 @@ base_outdir=$(jq -r '.results' "$CONFIG")
 disable_p2p=$(jq -r '.disable_p2p // ""' "$CONFIG")
 network_fallback=$(jq -r '.network_fallback // ""' "$CONFIG")
 dry_run=$(jq -r '.dry_run // ""' $CONFIG)
+resume=$(jq -r '.resume // ""' $CONFIG)
 nccl_debug=$(jq -r '.nccl_debug // ""' "$CONFIG")
 outdir="${base_outdir}/${experiment_type}/${experiment}/${gpu_type}/"
 mkdir -p "$outdir"
@@ -78,6 +79,12 @@ if [ "$dry_run" = "true" ]; then
     dry_run_flag="--dry-run"
 fi
 
+# resume flag
+resume_flag=""
+if [ "$resume" != "" ]; then
+    resume_flag="--resume $resume"
+fi
+
 # GPU power usage logging
 power_log="${outdir}/gpu_power.csv"
 
@@ -116,6 +123,9 @@ echo "runs          : $runs"
 echo "output        : $outdir"
 if [ "$dry_run" = "true" ]; then
     echo "mode           : DRY RUN"
+fi
+if [ "$resume" != "" ]; then
+    echo "resuming run  : $resume"
 fi
 echo "================================================================================"
 echo ""
