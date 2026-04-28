@@ -86,7 +86,8 @@ if [ "$resume" != "" ]; then
 fi
 
 # GPU power usage logging
-power_log="${outdir}/gpu_power.csv"
+timestamp=$(date +%d-%m-%Y_%H-%M-%S)
+power_log="${outdir}/gpu_power_${timestamp}.csv"
 
 # log every 5 seconds
 nvidia-smi \
