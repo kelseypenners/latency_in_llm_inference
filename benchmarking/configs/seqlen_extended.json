@@ -16,6 +16,7 @@
         {"random_input_len": 16384, "random_output_len": 512},
         {"random_input_len": 32768,"random_output_len": 512},
         {"random_input_len": 65536, "random_output_len": 512},
+        {"random_input_len": 73728, "random_output_len": 512},
         {"random_input_len": 98304, "random_output_len": 512}],
     "dry_run": "flase"
 
