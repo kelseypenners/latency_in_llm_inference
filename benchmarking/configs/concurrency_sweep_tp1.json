@@ -35,7 +35,11 @@
         {"max-concurrency":512,"num-prompts":3000},
         {"max-concurrency":640,"num-prompts":3000},
         {"max-concurrency":768,"num-prompts":3000},
-        {"max-concurrency":1024,"num-prompts":3000}],
+        {"max-concurrency":1024,"num-prompts":3000},
+        {"max-concurrency":1280, "num-prompts": 3000},
+        {"max-concurrency":1536, "num-prompts": 3000},
+        {"max-concurrency":1792, "num-prompts": 3000},
+        {"max-concurrency":2048, "num-prompts": 3000}],
     "dry_run": "true"
 
 }

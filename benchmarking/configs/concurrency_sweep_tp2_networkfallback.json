@@ -26,7 +26,11 @@
         {"max-concurrency": 512,  "num-prompts": 3000},
         {"max-concurrency": 640,  "num-prompts": 4000},
         {"max-concurrency": 768,  "num-prompts": 5000},
-        {"max-concurrency": 1024, "num-prompts": 5000}],
+        {"max-concurrency": 1024, "num-prompts": 5000},
+        {"max-concurrency": 1280, "num-prompts": 5000},
+        {"max-concurrency": 1536, "num-prompts": 5000},
+        {"max-concurrency": 1792, "num-prompts": 5000},
+        {"max-concurrency": 2048, "num-prompts": 5000}],
     "network_fallback": "true",    
     "nccl_debug": "INFO",
     "dry_run": "false"
