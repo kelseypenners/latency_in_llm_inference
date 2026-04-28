@@ -3,5 +3,6 @@ results/
 test_*.json
 Llama*/
 idk_*
-sonnet.txt
 ShareGPT*
+scratch*
+__pycache__/
