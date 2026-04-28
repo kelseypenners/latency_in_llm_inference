@@ -14,8 +14,6 @@ seqlen_df = pd.read_csv('../results/single-gpu/seqlen-sweep/averaged_single_gpu_
 concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/baseline/averaged_concurrency_sweep_baseline_results.csv')
 # load fine-grained concurrency sweep data
 concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/fine-grained/averaged_concurrency_sweep_fine_grained_results.csv')
-# load itl data
-itldistributions_path = '../results/single-gpu/concurrency-sweep/fine-grained/itl_distributions.parquet'
 # load prompt type data
 prompttype_df = pd.read_csv('../results/single-gpu/dataset-comparison/prompttype_10runs_1prompt.csv')
 # load prompt type data
@@ -46,7 +44,7 @@ def plot_input_output_heatmap(df, gpu_type, values, title, cmap='Oranges', paper
     ax.invert_yaxis()
     ax.set_title(title, pad=10)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
     ax.set_xlabel('Input Sequence Length (tokens)', labelpad=6)
     ax.set_ylabel('Output Sequence Length (tokens)', labelpad=6)
     plt.tight_layout()
@@ -60,7 +58,7 @@ def plot_ttft_vs_isl(df, gpu_type, osl=None, title=None, paper=False):
         osl_values = sorted(df['random_output_len'].unique())
     else:
         osl_values = [osl]
-    title = title or 'TTFT Scales Linearly with ISL, Independent of OSL'
+    title = title or 'TTFT vs Input Sequence Length'
 
     fig, ax = plt.subplots()
     for osl_val in osl_values:
@@ -69,7 +67,7 @@ def plot_ttft_vs_isl(df, gpu_type, osl=None, title=None, paper=False):
                 marker='o', label=f"OSL={osl_val}")
     ax.set_title(title, pad=10)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
     ax.set_xlabel('Input Sequence Length (ISL) (tokens)')
     ax.legend(title='Output Length', loc='upper left')
     ax.set_ylabel('TTFT (ms)')
@@ -133,7 +131,7 @@ def plot_e2el_vs_osl(df, gpu_type, isl=None, title=None, paper=False):
                 marker='o', label=f"ISL={isl_val}")
     ax.set_title(title, pad=10)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra='Concurrency = 1')
     ax.set_xlabel('OSL (tokens)')
     ax.legend(title='Input Length')
     ax.set_ylabel('E2E Latency (ms)')
@@ -170,7 +168,7 @@ def plot_metrics_vs_concurrency(df, gpu_type, metric, label, title, paper=False)
     ax.plot(df['max_concurrency'], df[metric], marker='o', color='#4C9BE8')
     ax.set_title(title, pad=10)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
     ax.set_xlabel('Concurrency (max in-flight requests)')
     ax.set_ylabel(label)
     ax.set_xticks(df['max_concurrency'])
@@ -199,7 +197,7 @@ def plot_mean_vs_p99(df, gpu_type, metric="itl", title=None, p90=True, paper=Fal
 
     ax.set_title(title, pad=10)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
     ax.set_xlabel('Concurrency', labelpad=6)
     ax.set_ylabel(f'{metric.upper()} (ms)', labelpad=6)
     ax.set_xticks(df['max_concurrency'])
@@ -211,159 +209,6 @@ def plot_mean_vs_p99(df, gpu_type, metric="itl", title=None, p90=True, paper=Fal
 
     return fig
 
-def plot_itl_boxplot(parquet_path, gpu_type, title=None, showfliers=False, paper=False):
-    """ ITL distribution box-whisker plot across concurrency levels """
-
-    title = title or 'ITL Distribution vs Concurrency'
-
-    df = pd.read_parquet(parquet_path)
-    if gpu_type.lower().replace(' ', '') in ['a10040gb', 'a100']:
-        df = df[df['gpu_type'] == 'a100']
-    else:
-        df = df[df['gpu_type'] == 'v100']
-
-    df_exploded = df.explode('itls_ms')
-    df_exploded['itls_ms'] = df_exploded['itls_ms'].astype(float)
-
-    concurrency_levels = sorted(df_exploded['max_concurrency'].unique())
-    data = [df_exploded[df_exploded['max_concurrency'] == c]['itls_ms'].values
-            for c in concurrency_levels]
-
-    fig, ax = plt.subplots(figsize=(5.5, 3.5))
-    bp = ax.boxplot(data, labels=concurrency_levels,
-                    showfliers=showfliers, patch_artist=True)
-    for patch in bp['boxes']:
-        patch.set_facecolor('#4C9BE8')
-        patch.set_alpha(0.7)
-    for median in bp['medians']:
-        median.set_color('#E85C4C')
-        median.set_linewidth(1.5)
-    for whisker in bp['whiskers']:
-        whisker.set_color('#444444')
-        whisker.set_linewidth(1.0)
-    for cap in bp['caps']:
-        cap.set_color('#444444')
-        cap.set_linewidth(1.0)
-
-    ax.set_title(title, pad=10)
-    if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
-    ax.set_xlabel('Concurrency (max in-flight requests)', labelpad=6)
-    ax.set_ylabel('ITL (ms)', labelpad=6)
-    ax.grid(True, axis='y', alpha=0.3)
-    ax.tick_params(axis='x', rotation=45)
-    plt.tight_layout()
-
-    return fig
-
-def plot_itl_boxplot_outliers(parquet_path, gpu_type, title=None, paper=False):
-    """
-    ITL boxplot with broken y-axis.
-    Bottom panel: full box/whisker without fliers, zoomed to bulk distribution.
-    Top panel: log-scale outlier scatter only, showing extreme tail values.
-    """
-    title = title or 'ITL Distribution vs Concurrency (with Outliers)'
-
-    df = pd.read_parquet(parquet_path)
-    if gpu_type.lower().replace(' ', '') in ['a10040gb', 'a100']:
-        df = df[df['gpu_type'] == 'a100']
-    else:
-        df = df[df['gpu_type'] == 'v100']
-
-    df_exploded = df.explode('itls_ms')
-    df_exploded['itls_ms'] = df_exploded['itls_ms'].astype(float)
-
-    concurrency_levels = sorted(df_exploded['max_concurrency'].unique())
-    data = [df_exploded[df_exploded['max_concurrency'] == c]['itls_ms'].values
-            for c in concurrency_levels]
-
-    # compute break point just above max whisker
-    whisker_tops = []
-    for d in data:
-        q25, q75 = np.percentile(d, [25, 75])
-        iqr = q75 - q25
-        whisker_tops.append(min(q75 + 1.5 * iqr, np.max(d)))
-    break_point = max(whisker_tops) * 1.15
-
-    all_vals = np.concatenate(data)
-    outlier_max = np.percentile(all_vals, 99.5)
-
-    fig, (ax_top, ax_bot) = plt.subplots(
-        2, 1, figsize=(5.5, 5.0),
-        gridspec_kw={'height_ratios': [1, 3], 'hspace': 0.08}
-    )
-
-    box_kwargs = dict(
-        patch_artist=True,
-        medianprops=dict(color='#E85C4C', linewidth=1.5),
-        whiskerprops=dict(color='#444444', linewidth=1.0),
-        capprops=dict(color='#444444', linewidth=1.0),
-        boxprops=dict(linewidth=0.8),
-    )
-
-    # bottom panel: boxes + whiskers, no fliers
-    bp_bot = ax_bot.boxplot(data, labels=concurrency_levels,
-                            showfliers=False, **box_kwargs)
-    for patch in bp_bot['boxes']:
-        patch.set_facecolor('#4C9BE8')
-        patch.set_alpha(0.7)
-    ax_bot.set_ylim(0, break_point * 0.92)
-
-    # top panel: log-scale outlier scatter only
-    ax_top.set_yscale('log')
-    for i, (c, d) in enumerate(zip(concurrency_levels, data), start=1):
-        outliers = d[d > break_point]
-        if len(outliers) > 0:
-            jitter = np.random.uniform(-0.3, 0.3, size=len(outliers))
-            ax_top.scatter(np.full_like(outliers, i) + jitter, outliers,
-                           color='#E85C4C', alpha=0.5, s=8, linewidths=0, zorder=3)
-    ax_top.set_ylim(break_point, outlier_max * 1.5)
-
-    from matplotlib.ticker import LogLocator, LogFormatter
-    ax_top.yaxis.set_major_locator(LogLocator(base=10, numticks=4))
-    ax_top.yaxis.set_major_formatter(LogFormatter(base=10, labelOnlyBase=True))
-
-    n = len(concurrency_levels)
-    ax_bot.set_xlim(0.5, n + 0.5)
-    ax_top.set_xlim(0.5, n + 0.5)
-    ax_top.set_xticks([])
-
-    ax_top.spines['bottom'].set_visible(False)
-    ax_top.spines['top'].set_visible(False)
-    ax_bot.spines['top'].set_visible(False)
-    ax_top.tick_params(bottom=False, which='both')
-
-    d_mark = 0.012
-    break_kwargs = dict(color='#555555', linewidth=1.0, clip_on=False)
-    ax_top.plot((-d_mark, +d_mark), (-d_mark, +d_mark),
-                transform=ax_top.transAxes, **break_kwargs)
-    ax_top.plot((1 - d_mark, 1 + d_mark), (-d_mark, +d_mark),
-                transform=ax_top.transAxes, **break_kwargs)
-    ax_bot.plot((-d_mark, +d_mark), (1 - d_mark, 1 + d_mark),
-                transform=ax_bot.transAxes, **break_kwargs)
-    ax_bot.plot((1 - d_mark, 1 + d_mark), (1 - d_mark, 1 + d_mark),
-                transform=ax_bot.transAxes, **break_kwargs)
-
-    ax_top.text(0.01, 0.95, f'Outliers only (> {break_point:.0f} ms, log scale)',
-                transform=ax_top.transAxes, fontsize=7,
-                color='#E85C4C', va='top')
-    ax_bot.text(0.01, 0.97, f'Bulk distribution ($\\leq$ {break_point:.0f} ms)',
-                transform=ax_bot.transAxes, fontsize=7,
-                color='#444444', va='top')
-
-    ax_top.set_ylabel('ITL (ms)', labelpad=6)
-    ax_bot.set_ylabel('ITL (ms)', labelpad=6)
-    ax_bot.set_xlabel('Concurrency (max in-flight requests)', labelpad=6)
-    ax_bot.tick_params(axis='x', rotation=45)
-    ax_top.grid(True, axis='y', alpha=0.3)
-    ax_bot.grid(True, axis='y', alpha=0.3)
-
-    fig.suptitle(title, y=0.98)
-    if not paper:
-        subtitle(ax_top, gpu_type, model='Llama-3.1-8B', extra='ISL / OSL = 512 / 512')
-
-    plt.tight_layout()
-    return fig
 
 # COMPARISON PLOTS ----------------------------------------------------
 def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512, paper=False):
@@ -386,7 +231,7 @@ def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512, pape
     ax.set_ylabel('TTFT (ms)', labelpad=6)
     ax.set_title('TTFT: Run-to-Run Variance', pad=8)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra=f'OSL={osl}, Concurrency=1')
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra=f'OSL={osl}, Concurrency=1')
     ax.set_xticks(sorted(fixed_osl['random_input_len'].unique()))
     ax.tick_params(axis='x', rotation=45)
     ax.grid(True, axis='y', alpha=0.3)
@@ -405,7 +250,7 @@ def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512, pape
     ax.set_ylabel('Output Throughput (tokens/s)', labelpad=6)
     ax.set_title('Throughput: Run-to-Run Variance', pad=8)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='ISL/OSL = 512/512')
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra='ISL/OSL = 512/512')
     ax.set_xticks(concurrency_df['max_concurrency'])
     ax.set_xscale('log', base=2)
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
@@ -470,9 +315,15 @@ def plot_ttft_vs_isl_comparison(a100_df, v100_df, osl=512, title=None, paper=Fal
     if not paper:
         subtitle(ax, gpu_type='A100 40GB vs V100 32GB', model='Llama-3.1-8B',
                  extra=f'Concurrency = 1  | OSL={osl}')
-    ax.set_xlabel('Input Sequence Length (ISL) (tokens)')
+    ax.set_xlabel('Input Sequence Length (tokens)')
     ax.legend(title='GPU Type', loc='upper left')
-    ax.set_ylabel('TTFT (ms)')
+    ax.set_ylabel('TTFT')
+    ax.set_xscale('log', base=2)
+    ax.set_yscale('log', base=10)
+    ticks_s = [0.1, 1, 10, 60, 300]
+    ticks_ms = 1000 * np.array(ticks_s)
+    ax.set_yticks(ticks_ms)
+    ax.set_yticklabels([f"{t}s" for t in ticks_s])
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
 
@@ -531,52 +382,6 @@ def plot_mean_vs_p99_comparison(a100_df, v100_df, metric='itl', title=None, pape
         ax.tick_params(axis='x', rotation=45)
         ax.grid(True, axis='y', alpha=0.3)
         ax.legend(fontsize=7)
-
-    fig.suptitle(title, y=1.01)
-    if not paper:
-        fig.text(0.5, 0.97, 'Llama-3.1-8B  |  ISL / OSL = 512 / 512',
-                 ha='center', va='top', fontsize=7, color='grey')
-    plt.tight_layout()
-
-    return fig
-
-def plot_itl_boxplot_comparison(parquet_path, title=None, paper=False):
-    """ ITL distribution box-whisker comparison between A100 and V100 """
-
-    title = title or 'ITL Distribution vs Concurrency -- A100 vs V100'
-
-    df_all = pd.read_parquet(parquet_path)
-    gpu_types = ['a100', 'v100']
-    gpu_labels = ['A100 40GB', 'V100 32GB']
-
-    fig, axes = plt.subplots(1, 2, figsize=(6, 3.2), sharey=True)
-    for ax, gpu, label in zip(axes, gpu_types, gpu_labels):
-        df = df_all[df_all['gpu_type'] == gpu]
-        df_exploded = df.explode('itls_ms')
-        df_exploded['itls_ms'] = df_exploded['itls_ms'].astype(float)
-
-        concurrency_levels = sorted(df_exploded['max_concurrency'].unique())
-        data = [df_exploded[df_exploded['max_concurrency'] == c]['itls_ms'].values
-                for c in concurrency_levels]
-
-        bp = ax.boxplot(data, labels=concurrency_levels, showfliers=False, patch_artist=True)
-        for patch in bp['boxes']:
-            patch.set_facecolor('#4C9BE8')
-            patch.set_alpha(0.7)
-        for median in bp['medians']:
-            median.set_color('#E85C4C')
-            median.set_linewidth(1.5)
-        for whisker in bp['whiskers']:
-            whisker.set_color('#444444')
-            whisker.set_linewidth(1.0)
-        for cap in bp['caps']:
-            cap.set_color('#444444')
-            cap.set_linewidth(1.0)
-        ax.set_title(label, pad=8)
-        ax.set_xlabel('Concurrency (max in-flight requests)', labelpad=6)
-        ax.set_ylabel('ITL (ms)', labelpad=6)
-        ax.grid(True, axis='y', alpha=0.3)
-        ax.tick_params(axis='x', rotation=45)
 
     fig.suptitle(title, y=1.01)
     if not paper:
@@ -678,7 +483,7 @@ def plot_prompt_type_ttft(df, gpu_type, isl=512, osl=64, title=None, paper=False
 
     ax.set_title(title, pad=10)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B',
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B',
                  extra=f'ISL={isl}  |  OSL={osl}  |  Concurrency=1')
     ax.set_ylabel('Mean TTFT (ms)', labelpad=6)
     ax.set_ylim(0, max(means) * 1.15)
@@ -710,7 +515,7 @@ def plot_prompt_type_e2el(df, gpu_type, isl=512, osl=64, title=None, paper=False
 
     ax.set_title(title, pad=10)
     if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B',
+        subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B',
                  extra=f'ISL={isl}  |  OSL={osl}  |  Concurrency=1')
     ax.set_ylabel('Mean E2E Latency (ms)', labelpad=6)
     ax.set_ylim(0, max(means) * 1.15)
@@ -774,7 +579,7 @@ def gpu_mem_piechart(gpu_type=None, total_vram=None, gpu_mem_util=0.85, title=No
             at.set_fontsize(7)
         #ax.set_title(title, pad=10)
         if not paper:
-            subtitle(ax, gpu_type, model='Llama-3.1-8B', extra='BF16 | Static Allocation')
+            subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B', extra='BF16 | Static Allocation')
 
     plt.tight_layout()
     return fig
@@ -811,7 +616,7 @@ def plot_ttft_raw(df, gpu_type, run_number=0, prompt_type=None, title=None, pape
                     color=color, linestyle=linestyle,
                     alpha=0.8, marker='o', markersize=2.5)
         if not paper:
-            subtitle(ax, gpu_type, model='Llama-3.1-8B',
+            subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B',
                      extra=f'Concurrency = 1 | Prompt Type: {prompt_type}')
         ax.legend(fontsize=7)
     else:
@@ -825,7 +630,7 @@ def plot_ttft_raw(df, gpu_type, run_number=0, prompt_type=None, title=None, pape
                         color=color, linestyle=linestyle,
                         alpha=0.8, marker='o', markersize=2.5)
         if not paper:
-            subtitle(ax, gpu_type, model='Llama-3.1-8B',
+            subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B',
                      extra='Concurrency = 1 | Prompt Types: repetitive, coherent, random')
 
         legend_handles = [
@@ -870,7 +675,7 @@ def plot_ttft_zero_mean(df, gpu_type, run_number=0, prompt_type=None,
         ax.scatter(np.arange(len(ttft_zero_mean)), ttft_zero_mean,
                    color='#4C9BE8', alpha=0.7, s=12)
         if not paper:
-            subtitle(ax, gpu_type, model='Llama-3.1-8B',
+            subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B',
                      extra=f'Concurrency = 1 | Prompt Type: {prompt_type}')
     else:
         prompt_configs = [('easy',   '#4C9BE8'),
@@ -886,7 +691,7 @@ def plot_ttft_zero_mean(df, gpu_type, run_number=0, prompt_type=None,
                        label=p_type, color=color, alpha=0.7, s=12)
         ax.legend(title='Prompt Type', fontsize=7, loc='lower left')
         if not paper:
-            subtitle(ax, gpu_type, model='Llama-3.1-8B',
+            subtitle(ax, gpu_type=gpu_type, model='Llama-3.1-8B',
                      extra=f'Concurrency = 1 | Enable prefix caching: {prefix_caching}')
 
     ax.axhline(0, color='#444444', linewidth=0.8)
@@ -899,74 +704,6 @@ def plot_ttft_zero_mean(df, gpu_type, run_number=0, prompt_type=None,
 
     return fig
 
-def plot_memory_vs_concurrency(gpu_type='A100 40GB', total_vram=40, gpu_mem_util=0.85,
-                                isl=512, osl=512, concurrency_levels=None, paper=False):
-    """ analytical GPU memory as a function of concurrency """
-
-    if concurrency_levels is None:
-        concurrency_levels = [1, 4, 6, 8, 12, 16, 24, 32, 48, 64,
-                               80, 96, 112, 128, 144, 160, 192, 256, 320, 384, 448, 512]
-
-    # Llama-3.1-8B constants
-    num_layers   = 32
-    num_kv_heads = 8
-    head_dim     = 128
-    dtype_bytes  = 2  # bf16
-    kv_factor    = 2  # keys and values
-
-    avg_tokens = isl + osl / 2
-    kv_per_request_gb = (num_layers * avg_tokens * num_kv_heads * head_dim * kv_factor * dtype_bytes) / 1e9
-
-    weight_gb        = 16.0
-    activation_gb    = total_vram * 0.1
-    reserved_ceiling = total_vram * gpu_mem_util
-    kv_pool_gb       = reserved_ceiling - weight_gb - activation_gb
-
-    conc          = np.array(concurrency_levels)
-    kv_used_gb    = conc * kv_per_request_gb
-    total_used_gb = weight_gb + activation_gb + kv_used_gb
-    saturation_conc = kv_pool_gb / kv_per_request_gb
-
-    fig, ax = plt.subplots()
-
-    ax.fill_between(conc, 0, weight_gb,
-                    alpha=0.75, color='#4C9BE8',
-                    label=f'Model Weights ({weight_gb:.0f} GB)')
-    ax.fill_between(conc, weight_gb, weight_gb + activation_gb,
-                    alpha=0.75, color='#5CB85C',
-                    label=f'Activations & Framework ({activation_gb:.0f} GB)')
-    ax.fill_between(conc, weight_gb + activation_gb, total_used_gb,
-                    alpha=0.75, color='#E85C4C',
-                    label='KV Cache (active requests)')
-
-    ax.axhline(reserved_ceiling, color='#333333', linewidth=1.2, linestyle='--',
-               label=f'Reserved ceiling ({reserved_ceiling:.0f} GB, util={gpu_mem_util})')
-
-    ax.axvline(saturation_conc, color='#E85C4C', linewidth=1.0, linestyle=':')
-    ax.annotate(f'KV cache\nsaturation\n$\\approx${saturation_conc:.0f} req.',
-                xy=(saturation_conc, reserved_ceiling * 0.75),
-                xytext=(saturation_conc + 20, reserved_ceiling * 0.75),
-                fontsize=7,
-                arrowprops=dict(arrowstyle='->', lw=1.0))
-
-    ax.set_xlim(conc[0], conc[-1])
-    ax.set_ylim(0, total_vram)
-    ax.set_xscale('log', base=2)
-    ax.set_xticks([4, 8, 16, 32, 64, 128, 256, 512])
-    ax.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
-    ax.tick_params(axis='x', rotation=45)
-
-    ax.set_title('GPU Memory Usage vs Concurrency', pad=10)
-    if not paper:
-        subtitle(ax, gpu_type, model='Llama-3.1-8B',
-                 extra=f'ISL / OSL = {isl} / {osl}  |  GPU Mem Util = 0.85 | Analytical')
-    ax.set_xlabel('Concurrency (max in-flight requests)', labelpad=6)
-    ax.set_ylabel('GPU Memory (GB)', labelpad=6)
-    ax.legend(fontsize=7, loc='lower right')
-    ax.grid(True, axis='y', alpha=0.3)
-    plt.tight_layout()
-
-    return fig
 
 
 # A100 PLOTS ----------------------------------------------------
@@ -978,32 +715,28 @@ fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 values='mean_ttft_ms',
                                 title='A100 TTFT [ms]',
                                 cmap='coolwarm',
+                                paper=False)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='output_throughput',
+                                title='A100 Output Throughput [tokens/s]',
+                                cmap='coolwarm_r',
                                 paper=True)
-save_fig(fig, 'a100_ttft')
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='output_throughput',
-#                                 title='A100 Output Throughput [tokens/s]',
-#                                 cmap='coolwarm_r',
-#                                 paper=True)
-# save_fig(fig, 'a100_throughput')
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='mean_itl_ms',
-#                                 title='A100 Mean ITL [ms]',
-#                                 cmap='coolwarm',
-#                                 paper=True)
-# save_fig(fig, 'a100_itl')
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='total_token_throughput',
-#                                 title='Total Token Throughput (tokens/s)',
-#                                 cmap='coolwarm_r',
-#                                 paper=True)
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='mean_e2el_ms',
-#                                 title='A100 E2EL [ms]',
-#                                 cmap='coolwarm',
-#                                 paper=True)
-# save_fig(fig, 'a100_e2el')
-fig = plot_ttft_vs_isl(df=data, gpu_type=gpu_type, paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='mean_itl_ms',
+                                title='A100 Mean ITL [ms]',
+                                cmap='coolwarm',
+                                paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='total_token_throughput',
+                                title='Total Token Throughput (tokens/s)',
+                                cmap='coolwarm_r',
+                                paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='mean_e2el_ms',
+                                title='A100 E2EL [ms]',
+                                cmap='coolwarm',
+                                paper=True)
+fig = plot_ttft_vs_isl(df=data, gpu_type=gpu_type, osl=512, paper=True)
 # fig = plot_e2el_vs_osl(df=data, gpu_type=gpu_type, paper=True)
 
 #%% [markdown]
@@ -1031,8 +764,6 @@ fig = plot_metrics_vs_concurrency(df=data, gpu_type=gpu_type,
                                   paper=True)
 fig = plot_mean_vs_p99(df=data, gpu_type=gpu_type, metric='itl', paper=True)
 fig = plot_mean_vs_p99(df=data, gpu_type=gpu_type, metric='tpot', paper=True)
-fig = plot_itl_boxplot(parquet_path=itldistributions_path, 
-                       gpu_type='A100 40GB', paper=True)
 
 
 # V100 PLOTS ----------------------------------------------------
@@ -1040,37 +771,33 @@ fig = plot_itl_boxplot(parquet_path=itldistributions_path,
 # ## V100 Sequence Length Sweep
 data = v100_seqlen_data
 gpu_type = 'V100 32GB'
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='mean_ttft_ms',
-#                                 title='V100 TTFT [ms]',
-#                                 cmap='coolwarm',
-#                                 paper=True)
-# save_fig(fig, 'v100_ttft')
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='output_throughput',
-#                                 title='V100 Output Throughput [tokens/s]',
-#                                 cmap='coolwarm_r',
-#                                 paper=True)
-# save_fig(fig, 'v100_throughput')
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='mean_itl_ms',
-#                                 title='V100 Mean ITL [ms]',
-#                                 cmap='coolwarm',
-#                                 paper=True)
-# save_fig(fig, 'v100_itl')
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='total_token_throughput',
-#                                 title='Total Token Throughput (tokens/s)',
-#                                 cmap='coolwarm_r',
-#                                 paper=True)
-# fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
-#                                 values='mean_e2el_ms',
-#                                 title='V100 E2EL [ms]',
-#                                 cmap='coolwarm',
-#                                 paper=True)
-# save_fig(fig, 'v100_e2el')
-# fig = plot_ttft_vs_isl(df=data, gpu_type=gpu_type, paper=True)
-# fig = plot_e2el_vs_osl(df=data, gpu_type=gpu_type, paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='mean_ttft_ms',
+                                title='V100 TTFT [ms]',
+                                cmap='coolwarm',
+                                paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='output_throughput',
+                                title='V100 Output Throughput [tokens/s]',
+                                cmap='coolwarm_r',
+                                paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='mean_itl_ms',
+                                title='V100 Mean ITL [ms]',
+                                cmap='coolwarm',
+                                paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='total_token_throughput',
+                                title='Total Token Throughput (tokens/s)',
+                                cmap='coolwarm_r',
+                                paper=True)
+fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
+                                values='mean_e2el_ms',
+                                title='V100 E2EL [ms]',
+                                cmap='coolwarm',
+                                paper=True)
+fig = plot_ttft_vs_isl(df=data, gpu_type=gpu_type, osl=512, paper=True)
+fig = plot_e2el_vs_osl(df=data, gpu_type=gpu_type, paper=True)
 
 #%% [markdown]
 # ## V100 Concurrency Sweep
@@ -1097,8 +824,6 @@ fig = plot_metrics_vs_concurrency(df=data, gpu_type=gpu_type,
                                   paper=True)
 fig = plot_mean_vs_p99(df=data, gpu_type=gpu_type, metric='itl', paper=True)
 fig = plot_mean_vs_p99(df=data, gpu_type=gpu_type, metric='tpot', paper=True)
-fig = plot_itl_boxplot(parquet_path=itldistributions_path, 
-                       gpu_type='V100 32GB', paper=True)
 
 
 # COMPARISON ----------------------------------------------------
@@ -1135,69 +860,50 @@ fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
                                              ylabel='TPOT (ms)',
                                              title='GPU Comparison: TPOT vs Concurrency',
                                              paper=True)
-# fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
-#                                              v100_df=v100_concurrency_data,
-#                                              metric='output_throughput',
-#                                              ylabel='Output Throughput (tokens/s)',
-#                                              title='Output Throughput vs Concurrency',
-#                                              paper=True)
-# save_fig(fig, 'throughputconcurrency')
-# fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
-#                                              v100_df=v100_concurrency_data,
-#                                              metric='mean_ttft_ms',
-#                                              ylabel='TTFT [ms]',
-#                                              title='TTFT vs Concurrency',
-#                                              paper=True)
-# save_fig(fig, 'ttftconcurrency')
-# fig = plot_kv_saturation_comparison(a100_df=a100_concurrency_data,
-#                                     v100_df=v100_concurrency_data,
-#                                     paper=True)
-# save_fig(fig, 'kvsaturationplot')
+fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
+                                             v100_df=v100_concurrency_data,
+                                             metric='output_throughput',
+                                             ylabel='Output Throughput (tokens/s)',
+                                             title='Output Throughput vs Concurrency',
+                                             paper=True)
+fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
+                                             v100_df=v100_concurrency_data,
+                                             metric='mean_ttft_ms',
+                                             ylabel='TTFT [ms]',
+                                             title='TTFT vs Concurrency',
+                                             paper=True)
+fig = plot_kv_saturation_comparison(a100_df=a100_concurrency_data,
+                                    v100_df=v100_concurrency_data,
+                                    paper=True)
 
 # RUN VARIANCE ----------------------------------------------------
 # # %% [markdown]
 # ## Run Variance
-# seqlen_data = a100_seqlen_data
-# concurrency_data = a100_concurrency_data
-# gpu_type = 'A100 40GB'
-# fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
+seqlen_data = a100_seqlen_data
+concurrency_data = a100_concurrency_data
+gpu_type = 'A100 40GB'
+fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
 
-# seqlen_data = v100_seqlen_data
-# concurrency_data = a100_concurrency_data
-# gpu_type = 'V100 32GB'
-# fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
+seqlen_data = v100_seqlen_data
+concurrency_data = a100_concurrency_data
+gpu_type = 'V100 32GB'
+fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
 
 # PROMPT TYPE PLOTS ----------------------------------------------------
 # %% [markdown]
 ## Prompt Type
 fig = plot_prompt_type_ttft(prompttype_df_2, gpu_type='A100 40GB', isl=512, osl=64, paper=True)
-save_fig(fig, 'prompttype_ttft_means')
-#fig = plot_prompt_type_e2el(prompttype_df_2, gpu_type='A100 40GB', isl=512, osl=64, paper=True)
+fig = plot_prompt_type_e2el(prompttype_df_2, gpu_type='A100 40GB', isl=512, osl=64, paper=True)
 
 # %%
-#fig = plot_ttft_zero_mean(prompttype_df_2, gpu_type='A100 40GB', run_number=1, prefix_caching=True)
+fig = plot_ttft_zero_mean(prompttype_df_2, gpu_type='A100 40GB', run_number=1, prefix_caching=True)
 fig = plot_ttft_zero_mean(prompttype_df_2, gpu_type='A100 40GB', run_number=1, prefix_caching=False, paper=True)
-save_fig(fig, 'prompttype_ttft_zeromean')
 fig = plot_ttft_raw(prompttype_df_2, gpu_type='A100 40GB', run_number=1, paper=True)
-save_fig(fig, 'prompttype_prefixcaching')
 # %%
-# fig = gpu_mem_piechart(gpu_type='A100 40GB', total_vram=40, 
-#                        title='A100 GPU Memory Allocation', paper=True)
-# save_fig(fig, 'a100_gpupie')
-# fig = gpu_mem_piechart(gpu_type='V100 32GB', total_vram=32, 
-#                        title='V100 GPU Memory Allocation', paper=True)
-# save_fig(fig, 'v100_gpupie')
+fig = gpu_mem_piechart(gpu_type='A100 40GB', total_vram=40, 
+                       title='A100 GPU Memory Allocation', paper=True)
+fig = gpu_mem_piechart(gpu_type='V100 32GB', total_vram=32, 
+                       title='V100 GPU Memory Allocation', paper=True)
 
-# fig = gpu_mem_piechart(paper=True)
+fig = gpu_mem_piechart(paper=True)
 
-fig = plot_memory_vs_concurrency(gpu_type='A100 40GB', total_vram=40, paper=True)
-fig = plot_memory_vs_concurrency(gpu_type='V100 32GB', total_vram=32, paper=True)
-
-# %%
-# fig = plot_itl_boxplot(parquet_path=itldistributions_path,
-#                        gpu_type='A100 40GB', showfliers=True)
-# fig = plot_itl_boxplot(parquet_path=itldistributions_path,
-#                        gpu_type='A100 40GB', showfliers=False)
-# fig = plot_itl_boxplot_outliers(parquet_path=itldistributions_path,
-#                                 gpu_type='A100 40GB')
-# %%

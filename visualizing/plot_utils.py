@@ -4,10 +4,10 @@ import matplotlib as mpl
 
 import seaborn as sns
 
-def subtitle(ax, gpu_type, model, extra):
-    """ consistent grey subtitle line """
-    ax.text(0.5, 1.03, f'1 x {gpu_type}  |  {model}  |  {extra}',
-        transform=ax.transAxes, ha='center', fontsize=8, color='gray')
+def subtitle(ax, **fields):
+    text = '  |  '.join(str(val) for val in fields.values())
+    ax.text(0.5, 1.03, text, transform=ax.transAxes,
+            ha='center', fontsize=8, color='gray')
     
 def save_fig(fig, filename, output_dir = "./"):
     output_dir = Path(output_dir)
@@ -29,7 +29,7 @@ def set_figure_style():
     sns.set_theme(style="whitegrid")
 
     mpl.rcParams.update({
-        # figure size — single panel default (5.5 x 3.5 for thesis single-column)
+        # figure size
         "figure.figsize": (3.5, 2.5),
         "figure.dpi": 300,
 
