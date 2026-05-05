@@ -142,7 +142,8 @@ env CUDA_VISIBLE_DEVICES=$gpu_ids "${nccl_env[@]}" \
     --num-runs "$runs" \
     $bench_params_flag $serve_params_flag \
     --output-dir "$outdir" \
-    $dry_run_flag 
+    $dry_run_flag $resume_flag
+
 
 # log experiment
 log="${base_outdir}/experiment_log.csv"
