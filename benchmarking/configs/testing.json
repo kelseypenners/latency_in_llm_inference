@@ -1,0 +1,16 @@
+{
+    "experiment": "concurrency-sweep",
+    "experiment_type": "single-gpu",
+    "gpu_ids": "3",
+    "gpu_type": "v100",
+    "model": "../Llama-3.1-8B",
+    "results": "../results",
+    "runs": 1,
+    "gpu_mem": 0.85,
+    "serve_cmd_extra": "--port 8000 --max-num-seqs 2048 --max-model-len 20000",
+    "bench_cmd_extra": "--backend openai --save-result --dataset-name random --random-input-len 512 --random-output-len 512  --metric-percentiles 75,90,99 --num-warmups 20 --ignore-eos --ready-check-timeout-sec 2000",
+    "bench_params": [
+        {"max-concurrency":512,"num-prompts":1000},
+        {"max-concurrency":640,"num-prompts":1000}],
+    "dry_run": "false"
+}
