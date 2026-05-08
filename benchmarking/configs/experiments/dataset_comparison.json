@@ -1,6 +1,5 @@
 {
         "experiment": "dataset-comparison",
-        "runs": 2,
         "bench_cmd_extra": "--backend openai --num-prompts 100 --save-result --save-detailed --num-warmups 20 --ignore-eos --max-concurrency 1",
         "bench_params":[    
             {

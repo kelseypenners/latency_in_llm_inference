@@ -2,7 +2,7 @@
 # run_experiment.sh
 # usage: ./run_experiment.sh --experiment <name> --hardware <name> --model <name> --gpu-ids <ids> [options]
 
-set -e
+set -eu
 
 CONFIGS_DIR="$(dirname "$0")/configs"
 RESULTS_DIR="../results"
@@ -20,31 +20,24 @@ resume=""
 nccl_debug=""
 
 # parse CLI args
-while [[ $# -gt 0]]; do
+while [[ $# -gt 0 ]]; do
     case $1 in
-        --experiment) experiment="$2"; shift 2
-        ;;
-        --hardware) hardware="$2"; shift 2
-        ;;
-        --model) model="$2"; shift 2
-        ;;
-        --interconnect) interconnect="$2"; shift 2
-        ;;
-        --tp) tp="$2"; shift 2
-        ;;
-        --runs) runs="$2"; shift 2
-        ;;
-        --dry-run) dry_run="$2"; shift 2
-        ;;
-        --resume) resume="$2"; shift 2
-        ;;
-        --nccl-debug) nccl_debug="$2"; shift 2
-        ;;
+        --experiment) experiment="$2"; shift 2;;
+        --hardware) hardware="$2"; shift 2 ;;
+        --model) model="$2"; shift 2;;
+        --interconnect) interconnect="$2"; shift 2;;
+        --gpu-ids) gpu_ids="$2"; shift 2;;
+        --tp) tp="$2"; shift 2;;
+        --runs) runs="$2"; shift 2;;
+        --dry-run) dry_run="$2"; shift 2;;
+        --resume) resume="$2"; shift 2;;
+        --nccl-debug) nccl_debug="$2"; shift 2;;
         *)
             echo "unknown argument: $1"
-            echo "usage: ./run_experiment.sh --experiment <name> --hardware <name> --model <name> --gpu-ids <ids> [--interconnect <name>] [--tp <n>] [--runs <n>] [--dry-run] [--resume <path>] [--nccl-debug <level>]"
+            echo "usage: ./run_experiment.sh --experiment <name> --hardware <name> --model <name> --gpu-ids <ids>" 
+            echo "                          [--interconnect <name>] [--tp <n>] [--runs <n>] [--dry-run] [--resume <path>] [--nccl-debug <level>]"
             exit 1
-        ;;
+            ;;
     esac
 done
 
@@ -57,7 +50,6 @@ missing=()
 
 if [ ${#missing[@]} -gt 0 ]; then
     echo "error: missing required arguments: ${missing[*]}"
-    echo "usage: ./run_experiment.sh --experiment <name> --hardware <name> --model <name> --gpu-ids <ids> [options]"
     exit 1
 fi
 
@@ -67,7 +59,7 @@ hardware_config="${CONFIGS_DIR}/hardware/${hardware}.json"
 model_config="${CONFIGS_DIR}/models/${model}.json"
 interconnect_config="${CONFIGS_DIR}/interconnect/${interconnect}.json"
 
-for f in "$experiment_cfg" "$hardware_cfg" "$model_cfg" "$interconnect_cfg"; do
+for f in "$experiment_config" "$hardware_config" "$model_config" "$interconnect_config"; do
     if [ ! -f "$f" ]; then
         echo "error: config file not found: $f"
         exit 1
@@ -80,25 +72,21 @@ merged=$(jq -s '.[0] * .[1] * .[2] * .[3]' \
 
 # read merged config values
 experiment=$(echo "$merged" | jq -r '.experiment')
-experiment=$(echo "$merged" | jq -r '.experiment')
 gpu_type=$(echo "$merged" | jq -r '.gpu_type')
 gpu_mem=$(echo "$merged" | jq -r '.gpu_mem // 0.85')
 model_path=$(echo "$merged" | jq -r '.model')
 model_name=$(echo "$merged" | jq -r '.model_name')
 serve_extra=$(echo "$merged" | jq -r '.serve_cmd_extra // ""')
-bench_extra=$(echo "$merged" | jq -r '.bench_cmd_extra')
+bench_extra=$(echo "$merged" | jq -r '.bench_cmd_extra // ""')
 disable_p2p=$(echo "$merged" | jq -r '.disable_p2p // false')
 network_fallback=$(echo "$merged" | jq -r '.network_fallback // false')
 nccl_debug=$(echo "$merged" | jq -r '.nccl_debug // ""')
 
-
-
-experiment_type=$(jq -r '.experiment_type' "$CONFIG")
-label=$(jq -r '.label // ""' "$CONFIG")
-
-
-outdir="${RESULTS_DIR}/${experiment_type}/${experiment}/${gpu_type}/tp${tp}/${interconnect}"
+# create out dir
+outdir="${RESULTS_DIR}/${experiment}/${gpu_type}/tp${tp}/${interconnect}"
 mkdir -p "$outdir"
+
+label="${experiment}_tp${tp}_${interconnect}"
 
 # write params files
 bench_params_flag=""
@@ -121,7 +109,7 @@ nccl_comm="default (best available)"
 if [ "$disable_p2p" = "true" ]; then
     # disable using NCCL_P2P_DISABLE
     nccl_env=(NCCL_P2P_DISABLE=1)
-    nccl_comm="P2P disabled" 
+    nccl_comm="P2P disabled (SHM transport)" 
 fi
 if [ "$network_fallback" = "true" ]; then
     # disable using NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
@@ -166,10 +154,6 @@ echo "$merged" | jq \
     '. + {gpu_ids: $gpu_ids, tp: $tp, runs: $runs, interconnect: $interconnect}' \
     > "${meta_dir}/config_merged.json"
 
-# save environment info
-nvidia-smi topo -m        > "${meta_dir}/topology.txt"  2>&1 || true
-nvidia-smi                > "${meta_dir}/nvidia_smi.txt" 2>&1 || true
-env | grep -E "CUDA|NCCL|PATH" > "${meta_dir}/environment.txt" 2>&1 || true
 
 # GPU power logging
 timestamp=$(date +%d-%m-%Y_%H-%M-%S)
@@ -195,7 +179,7 @@ trap cleanup EXIT
 
 # print usmmary
 echo "================================================================================"
-echo "experiment    : $experiment ($experiment_type) $label"
+echo "experiment    : $experiment  (label = $label)"
 echo "model         : $model_name ($model_path)"
 echo "gpu id(s)     : $gpu_ids  ($gpu_type)"
 echo "gpu mem       : $gpu_mem"
@@ -204,7 +188,7 @@ echo "tp            : $tp"
 echo "runs          : $runs"
 echo "output        : $outdir"
 if [ -n "$nccl_debug" ]; then
-    echo "nccl debug    : $nccl_debug"
+    echo "nccl debug    : $nccl_debug" 
 fi
 if [ "$dry_run" = "true" ]; then
     echo "mode           : DRY RUN"
@@ -225,7 +209,7 @@ env CUDA_VISIBLE_DEVICES=$gpu_ids "${nccl_env[@]}" \
         --model ${model_path} ${label_flag} ${bench_extra}" \
     --num-runs "$runs" \
     $bench_params_flag $serve_params_flag \
-    --output-dir "$outdir" \
+    --output-dir "$meta_dir" \
     $dry_run_flag $resume_flag
 
 # log experiment
