@@ -57,7 +57,7 @@ if [ "$disable_p2p" = "true" ]; then
     nccl_comm="P2P disabled" 
 fi
 if [ "$network_fallback" = "true" ]; then
-    # disable ussing NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
+    # disable using NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
     nccl_env=(NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1)
     nccl_comm="network fallback, (P2P, SHM disabled)"
 fi
