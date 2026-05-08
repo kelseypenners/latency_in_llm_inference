@@ -1,0 +1,5 @@
+{
+    "disable_p2p": "true",
+    "network_fallback": "false", 
+    "nccl_debug": "INFO"
+}

@@ -1,0 +1,4 @@
+{
+    "network_fallback": "true", 
+    "nccl_debug": "INFO"
+}

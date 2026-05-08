@@ -1,0 +1,24 @@
+{
+        "experiment": "dataset-comparison",
+        "runs": 2,
+        "bench_cmd_extra": "--backend openai --num-prompts 100 --save-result --save-detailed --num-warmups 20 --ignore-eos --max-concurrency 1",
+        "bench_params":[    
+            {
+                "dataset-name": "sharegpt",
+                "dataset-path": "./random_prompt_dataset.json",
+                "sharegpt-output-len": 64
+            },
+            {
+                "dataset-name": "sharegpt",
+                "dataset-path": "./easy_prompt_dataset.json",
+                "sharegpt-output-len": 64
+            },
+            {
+                "dataset-name": "sharegpt",
+                "dataset-path": "./harder_prompt_dataset.json",
+                "sharegpt-output-len": 64
+            }],
+        "serve_params":[
+            {"enable-prefix-caching": true},
+            {"enable-prefix-caching": false}]
+}
