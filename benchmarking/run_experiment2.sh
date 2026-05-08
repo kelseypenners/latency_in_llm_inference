@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
         --gpu-ids) gpu_ids="$2"; shift 2;;
         --tp) tp="$2"; shift 2;;
         --runs) runs="$2"; shift 2;;
-        --dry-run) dry_run="$2"; shift 2;;
+        --dry-run) dry_run="true"; shift 2;;
         --resume) resume="$2"; shift 2;;
         --nccl-debug) nccl_debug="$2"; shift 2;;
         *)
@@ -191,7 +191,7 @@ if [ -n "$nccl_debug" ]; then
     echo "nccl debug    : $nccl_debug" 
 fi
 if [ "$dry_run" = "true" ]; then
-    echo "mode           : DRY RUN"
+    echo "mode          : DRY RUN"
 fi
 if [ "$resume" != "" ]; then
     echo "resuming run  : $resume"
@@ -216,9 +216,9 @@ env CUDA_VISIBLE_DEVICES=$gpu_ids "${nccl_env[@]}" \
 log="${RESULTS_DIR}/experiment_log.csv"
 date_str=$(date +%d-%m-%Y)
 if [ ! -f "$log" ]; then
-    echo "date,experiment,experiment_type,model_name,gpu_type,tp,interconnect,gpu_ids,outdir" > "$log"
+    echo "date,experiment,model_name,gpu_type,tp,interconnect,gpu_ids,outdir" > "$log"
 fi
-echo "${date_str},${experiment},${experiment_type},${model_name},${gpu_type},${tp},${interconnect},${gpu_ids},${outdir}" >> "$log"
+echo "${date_str},${experiment},${model_name},${gpu_type},${tp},${interconnect},${gpu_ids},${outdir}" >> "$log"
 
 echo "========================================"
 echo "benchmark suite completed!"
