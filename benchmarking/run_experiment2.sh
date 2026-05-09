@@ -15,7 +15,7 @@ interconnect="default"
 gpu_ids=""
 tp=1
 runs="1"
-dry_run="false"
+dry_run=false
 resume=""
 nccl_debug=""
 
@@ -29,13 +29,13 @@ while [[ $# -gt 0 ]]; do
         --gpu-ids) gpu_ids="$2"; shift 2;;
         --tp) tp="$2"; shift 2;;
         --runs) runs="$2"; shift 2;;
-        --dry-run) dry_run="true"; shift 2;;
+        --dry-run) dry_run=true; shift;;
         --resume) resume="$2"; shift 2;;
         --nccl-debug) nccl_debug="$2"; shift 2;;
         *)
             echo "unknown argument: $1"
             echo "usage: ./run_experiment.sh --experiment <name> --hardware <name> --model <name> --gpu-ids <ids>" 
-            echo "                          [--interconnect <name>] [--tp <n>] [--runs <n>] [--dry-run] [--resume <path>] [--nccl-debug <level>]"
+            echo "                          [--interconnect <name>] [--tp <n>] [--runs <n>] [--dry-run] [--resume <timestamp>] [--nccl-debug <level>]"
             exit 1
             ;;
     esac
@@ -106,12 +106,12 @@ fi
 nccl_env=()
 nccl_comm="default (best available)"
 
-if [ "$disable_p2p" = "true" ]; then
+if [ "$disable_p2p" = true ]; then
     # disable using NCCL_P2P_DISABLE
     nccl_env=(NCCL_P2P_DISABLE=1)
     nccl_comm="P2P disabled (SHM transport)" 
 fi
-if [ "$network_fallback" = "true" ]; then
+if [ "$network_fallback" = true ]; then
     # disable using NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
     nccl_env=(NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1)
     nccl_comm="network fallback (P2P + SHM disabled, socket transport)"
@@ -130,7 +130,7 @@ fi
 
 # dry run flag
 dry_run_flag=""
-if [ "$dry_run" = "true" ]; then
+if [ "$dry_run" = true ]; then
     dry_run_flag="--dry-run"
 fi
 
@@ -177,7 +177,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# print usmmary
+# print summary
 echo "================================================================================"
 echo "experiment    : $experiment  (label = $label)"
 echo "model         : $model_name ($model_path)"
