@@ -80,7 +80,7 @@ serve_extra=$(echo "$merged" | jq -r '.serve_cmd_extra // ""')
 bench_extra=$(echo "$merged" | jq -r '.bench_cmd_extra // ""')
 disable_p2p=$(echo "$merged" | jq -r '.disable_p2p // false')
 network_fallback=$(echo "$merged" | jq -r '.network_fallback // false')
-nccl_debug=$(echo "$merged" | jq -r '.nccl_debug // ""')
+config_nccl_debug=$(echo "$merged" | jq -r '.nccl_debug // ""')
 
 # create out dir
 outdir="${RESULTS_DIR}/${experiment}/${model_name}/${gpu_type}/tp${tp}/${interconnect}"
@@ -105,6 +105,11 @@ fi
 # NCCL env vars for interconnect control
 nccl_env=()
 nccl_comm="default (best available)"
+
+# cli overrides config
+if [ -z "$nccl_debug" ]; then
+    nccl_debug="$config_nccl_debug"
+fi
 
 if [ "$disable_p2p" = true ]; then
     # disable using NCCL_P2P_DISABLE
