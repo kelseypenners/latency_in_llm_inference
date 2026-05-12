@@ -24,6 +24,15 @@ def get_prompt_type(row):
         return 'random'
     return None
 
+def filter_df(df, filters: dict):
+    """ filter data frame given filters {column: value, ...} """
+    data = df.copy()
+
+    for col, val in filters.items():
+        data = data[data[col] == val]
+
+    return data
+
 def set_figure_style():
 
     sns.set_theme(style="whitegrid")
