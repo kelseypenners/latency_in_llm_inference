@@ -24,12 +24,17 @@ def get_prompt_type(row):
         return 'random'
     return None
 
-def filter_df(df, filters: dict):
+def filter_df(df, **filters):
     """ filter data frame given filters {column: value, ...} """
     data = df.copy()
 
     for col, val in filters.items():
-        data = data[data[col] == val]
+        if val is None:
+            continue
+        if isinstance(val, (list, tuple, set)):
+            data = data[data[col].isin(val)]
+        else:
+            data = data[data[col] == val]
 
     return data
 

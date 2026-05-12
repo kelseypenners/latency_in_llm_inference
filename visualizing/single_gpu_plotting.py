@@ -16,18 +16,18 @@ prompttype_df = pd.read_csv('../results/single-gpu/dataset-comparison/prompttype
 prompttype_df_2 = pd.read_csv('../results/single-gpu/dataset-comparison/prompttype_prefixcache_results.csv')
 
 # filter for gpu specific seqlen data
-a100_seqlen_data = filter_df(seqlen_df, {'gpu_type': 'a100'})
-v100_seqlen_data = filter_df(seqlen_df, {'gpu_type': 'v100'})
+a100_seqlen_data = filter_df(seqlen_df, gpu_type = 'a100')
+v100_seqlen_data = filter_df(seqlen_df, gpu_type ='v100')
 
 # filter for gpu specific concurrency data
 a100_concurrency_data = filter_df(concurrency_df, 
-                                  {'gpu_type': 'a100', 
-                                   'model_id': '../Llama-3.1-8B',
-                                   'tp': 1,})
+                                  gpu_type = 'a100',
+                                  model_id = '../Llama-3.1-8B',
+                                  tp = 1)
 v100_concurrency_data = filter_df(concurrency_df, 
-                                  {'gpu_type': 'v100', 
-                                   'model_id': '../Llama-3.1-8B',
-                                   'tp': 1,})
+                                  gpu_type = 'v100',
+                                  model_id = '../Llama-3.1-8B',
+                                  tp = 1)
 
 set_figure_style()
 
