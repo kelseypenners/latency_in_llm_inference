@@ -8,23 +8,26 @@ import ast
 
 from plot_utils import *
 
-# load sequence length sweep data
-seqlen_df = pd.read_csv('../results/single-gpu/seqlen-sweep/averaged_single_gpu_seqlen_sweep_results.csv')
-# load baseline concurrency sweep data
-concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/baseline/averaged_concurrency_sweep_baseline_results.csv')
-# load fine-grained concurrency sweep data
-concurrency_df = pd.read_csv('../results/single-gpu/concurrency-sweep/fine-grained/averaged_concurrency_sweep_fine_grained_results.csv')
+# load experiment data
+seqlen_df = pd.read_csv("../resultscopy/seqlen-sweep/averaged_seqlen_sweep_results.csv")
+concurrency_df = pd.read_csv("../resultscopy/concurrency-sweep/averaged_concurrency_sweep_results.csv")
 # load prompt type data
 prompttype_df = pd.read_csv('../results/single-gpu/dataset-comparison/prompttype_10runs_1prompt.csv')
-# load prompt type data
 prompttype_df_2 = pd.read_csv('../results/single-gpu/dataset-comparison/prompttype_prefixcache_results.csv')
 
-# gpu-specific
-a100_seqlen_data = seqlen_df[seqlen_df['gpu_type'] == 'a100'].copy()
-v100_seqlen_data = seqlen_df[seqlen_df['gpu_type'] == 'v100'].copy()
+# filter for gpu specific seqlen data
+a100_seqlen_data = filter_df(seqlen_df, {'gpu_type': 'a100'})
+v100_seqlen_data = filter_df(seqlen_df, {'gpu_type': 'v100'})
 
-a100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'a100'].copy()
-v100_concurrency_data = concurrency_df[concurrency_df['gpu_type'] == 'v100'].copy()
+# filter for gpu specific concurrency data
+a100_concurrency_data = filter_df(concurrency_df, 
+                                  {'gpu_type': 'a100', 
+                                   'model_id': '../Llama-3.1-8B',
+                                   'tp': 1,})
+v100_concurrency_data = filter_df(concurrency_df, 
+                                  {'gpu_type': 'v100', 
+                                   'model_id': '../Llama-3.1-8B',
+                                   'tp': 1,})
 
 set_figure_style()
 
@@ -63,6 +66,7 @@ def plot_ttft_vs_isl(df, gpu_type, osl=None, title=None, paper=False):
     fig, ax = plt.subplots()
     for osl_val in osl_values:
         data = df[df['random_output_len'] == osl_val]
+        data = data.sort_values('random_input_len')
         ax.plot(data['random_input_len'], data['mean_ttft_ms'],
                 marker='o', label=f"OSL={osl_val}")
     ax.set_title(title, pad=10)
@@ -309,6 +313,7 @@ def plot_ttft_vs_isl_comparison(a100_df, v100_df, osl=512, title=None, paper=Fal
     fig, ax = plt.subplots()
     for df, label, color in zip(dfs, labels, colors):
         data = df[df['random_output_len'] == osl]
+        data = data.sort_values('random_input_len')
         ax.plot(data['random_input_len'], data['mean_ttft_ms'],
                 marker='o', label=label, color=color)
     ax.set_title(title, pad=10)
@@ -875,19 +880,6 @@ fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
 fig = plot_kv_saturation_comparison(a100_df=a100_concurrency_data,
                                     v100_df=v100_concurrency_data,
                                     paper=True)
-
-# RUN VARIANCE ----------------------------------------------------
-# # %% [markdown]
-# ## Run Variance
-seqlen_data = a100_seqlen_data
-concurrency_data = a100_concurrency_data
-gpu_type = 'A100 40GB'
-fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
-
-seqlen_data = v100_seqlen_data
-concurrency_data = a100_concurrency_data
-gpu_type = 'V100 32GB'
-fig = plot_run_variance(seqlen_data, concurrency_data, gpu_type=gpu_type, stds=1, osl=512)
 
 # PROMPT TYPE PLOTS ----------------------------------------------------
 # %% [markdown]
