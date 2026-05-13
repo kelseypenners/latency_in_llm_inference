@@ -2,317 +2,206 @@ import json
 import pandas as pd
 from pathlib import Path
 
-def parse_serve_output(filepath):
-    """ parse serve output text files """
-    # read file
-    with open(filepath, 'r') as f:
-        content = f.read()
-    
-    metrics= {}
 
-    # check each line for content
-    for line in content.split('\n'):
-        if 'Mean TTFT (ms)' in line:
-            metrics['TTFT mean'] = float(line.split()[-1])
-        elif 'Median TTFT (ms)' in line:
-            metrics['TTFT median'] = float(line.split()[-1])
-        elif 'P99 TTFT (ms)' in line:
-            metrics['TTFT P99'] = float(line.split()[-1])
-        elif 'Mean TPOT (ms)' in line:
-            metrics['TPOT mean'] = float(line.split()[-1])
-        elif 'Median TPOT (ms)' in line:
-            metrics['TPOT median'] = float(line.split()[-1])
-        elif 'P99 TPOT (ms)' in line:
-            metrics['TPOT P99'] = float(line.split()[-1])
-        elif 'Mean ITL (ms)' in line:
-            metrics['ITL mean'] = float(line.split()[-1])
-        elif 'Median ITL (ms)' in line:
-            metrics['ITL median'] = float(line.split()[-1])
-        elif 'P99 ITL (ms)' in line:
-            metrics['ITL P99'] = float(line.split()[-1])
-        elif 'Request throughput (req/s)' in line:
-            metrics['request throughput'] = float(line.split()[-1])
-        elif 'Output token throughput (tok/s)' in line:
-            metrics['output token throughput'] = float(line.split()[-1])
-        elif 'Benchmark duration (s)' in line:
-            metrics['duration'] = float(line.split()[-1])
-        
-    return metrics
+def metadata_from_path(path: Path):
+    """ infer metadata (gpu_type, tp, etc) from path of a summary file """
 
-def parse_latency_json(filepath):
-    """ parse bench latency json files """
-    with open(filepath, 'r') as f:
-        data = json.load(f)
-    
+    parts = path.parts
+
+    experiment = None
+    gpu_type = None
+    tp = None
+    interconnect = None
+
+    for i, part in enumerate(parts):
+        if part in ('a100', 'v100'):
+            gpu_type = part
+            # find experiment type from path
+            if i >= 2:
+                experiment = parts[i-2]
+            # expect tp after gpu_type
+            if i + 1 < len(parts) and parts[i+1].startswith('tp'):
+                try:
+                    tp = int(parts[i+1][2:])
+                except ValueError:
+                    pass
+            # expect interconnect after tp
+            if i + 2 < len(parts):
+                interconnect = parts[i+2]
+            break
     return {
-        'e2e latency mean': data['avg_latency'],
-        'e2e latency p50': data['percentiles']['50'],
-        'e2e latency p90': data['percentiles']['90'],
-        'e2e latency p99': data['percentiles']['99']
+        'experiment':   experiment,
+        'gpu_type':     gpu_type,
+        'tp':           tp,
+        'interconnect': interconnect,
     }
 
-def parse_throughput_json(filepath):
-    """ parse bench throughput json files """
-    with open(filepath, 'r') as f:
-        data = json.load(f)
+def parse_sweep_summary_json(filepath: Path):
+    """ parse summary json files """
 
-    return {
-        'elapsed time': data['elapsed_time'],
-        'requests per s': data['requests_per_second'],
-        'tokens per s': data['tokens_per_second']
-    }
-
-def parse_itl_distributions(filepath, nprompts=50):
-    """ parse summary json files for itl distributions """
-
+    # load json
     with open(filepath, 'r') as f:
         summary_data = json.load(f)
+    
+    # ignore keys with large amounts of data (processed separately)
+    drop_keys = {
+        "input_lens",
+        "output_lens",
+        "ttfts",
+        "itls",
+        "generated_texts",
+        "errors",
+    }
 
-    results = []
+    # ignore drop keys before dataframe creation
+    filtered_data = []
     for run in summary_data:
-        if 'itls' not in run:
-            continue
-        selected = run['itls'][::len(run['itls']) // nprompts]
-        itls_flat = [itl * 1000 for itl in sum(selected, [])] 
-        results.append({
-            'max_concurrency': run['max_concurrency'],
-            'run_number': run['run_number'],
-            'itls_ms': itls_flat
-        })
-    return results
+        filtered_run = {}
+        for k,v in run.items():
+            if k not in drop_keys:
+                filtered_run[k] = v
+        filtered_data.append(filtered_run)
 
-def get_itl_distributions(results_dir):
-    """ get itl distributions from a dir with summary.json files """
-    results_dir = Path(results_dir)
-    gpu_type = results_dir.name
+    df = pd.DataFrame(filtered_data)
 
-    all_results = []
-    # parse all summary files in results dir
-    for file in results_dir.rglob('summary*.json'):
-        run_results = parse_itl_distributions(file)
-        for run in run_results:
-            run['gpu_type'] = gpu_type
-        all_results.extend(run_results)
+    # add metadata from path
+    metadata = metadata_from_path(filepath)
+    for k, v in metadata.items():
+        df[k] = v
 
-    df = pd.DataFrame(all_results)
-    df = df.sort_values(['gpu_type', 'max_concurrency', 'run_number'])
-    col = df.pop('gpu_type')
-    df.insert(0, 'gpu_type', col)
     return df
 
-def save_itl_distributions(gpu_dirs, output_dir):
-    """ parses and saves itl data as parquet """
+def build_summary_csvs(results_dir: Path):
+    """ generate missing summary.csvs from json files """
 
-    output_dir = Path(output_dir)
-    all_gpu_dfs = []
+    # find every summary.json
+    for summary_json in results_dir.rglob("summary.json"):
 
-    for gpu_dir in gpu_dirs:
-        gpu_df = get_itl_distributions(gpu_dir)
-        all_gpu_dfs.append(gpu_df)
-        print(f"{Path(gpu_dir).name}: {len(gpu_df)} runs collected")
+        parent_dir = summary_json.parent
+        timestamp_dir = parent_dir.parent
+        summary_csv = timestamp_dir / "summary.csv"
 
-    df = pd.concat(all_gpu_dfs).sort_values(['gpu_type', 'max_concurrency', 'run_number'])
-    df.to_parquet(output_dir / 'itl_distributions.parquet', index=False)
-    print(f"saved itl_distributions.parquet ({len(df)} total runs)\n")
+        # skip if already exists
+        if summary_csv.exists():
+            print(f"    skipping existing: {summary_csv}")
+            continue
 
-# fields to keep from sweep json files
-KEEP_FIELDS = ["random_input_len", "random_output_len", 
-               "run_number", "max_concurrency",
-               "mean_ttft_ms", "std_ttft_ms", "p99_ttft_ms", "p90_ttft_ms", "p75_ttft_ms", "mean_itl_ms", 
-               "std_itl_ms", "p99_itl_ms", "p90_itl_ms", "p75_itl_ms", "mean_tpot_ms", "std_tpot_ms", 
-               "p99_tpot_ms", "p90_tpot_ms", "p75_tpot_ms","output_throughput", "total_token_throughput", 
-               "request_throughput", "mean_e2el_ms", "std_e2el_ms", 
-               "p99_e2el_ms", "p90_e2el_ms", "p75_e2el_ms", "duration", "max_concurrent_requests",
-               "completed", "failed"] 
+        print(f"generating: {summary_csv}")
 
-def parse_sweep_summary_json(filepath):
-    """ parse sweep summary json files """
-    
-    with open(filepath, 'r') as f:
-        summary_data = json.load(f)
-    results = []
+        # find all bench directories
+        benchmark_dirs = []
+        for dir in timestamp_dir.iterdir():
+            if dir.is_dir() and dir.name.startswith(("BENCH", "SERVE")):
+                benchmark_dirs.append(dir)
 
-    # for each run get kept field values
-    for run in summary_data:
-        run_results={}
-        for k in KEEP_FIELDS:
-            keep_value = run.get(k)
-            run_results[k] = keep_value
-        results.append(run_results)
-    return results
+        # collect all dfs from bench directories in timestamp dir
+        all_dfs = []
+        for bench_dir in benchmark_dirs:
+            bench_summary = bench_dir / "summary.json"
 
-def get_results_sweep(results_dir):
-    """ get results from a dir with summary.json files """
-    results_dir = Path(results_dir)
-    gpu_type = results_dir.name
+            if not bench_summary.exists():
+                continue
 
-    all_results = []
-    # parse all summary files in result dir
-    for file in results_dir.rglob('summary*.json'):
-        result = parse_sweep_summary_json(file)
-        for run in result:
-            # add gpu_type to run summary
-            run["gpu_type"] = gpu_type
-        all_results.extend(result)
+            try:
+                df = parse_sweep_summary_json(bench_summary)
+                all_dfs.append(df)
+            except Exception as e:
+                print(f"failed parsing {bench_summary}: {e}")
 
-    all_results_df = pd.DataFrame(all_results)
+        if not all_dfs:
+            print(f"no summaries found in {parent_dir.parent}")
+            continue
 
-    return all_results_df
+        final_df = pd.concat(all_dfs, ignore_index=True)
+        final_df.to_csv(summary_csv)
 
-def average_sweep_results(sweep_df):
-    """ average sweep results across runs of same configs """
-    df = sweep_df.copy()
+        print(f"saved: {summary_csv}")
 
-    # columns we don't average over
-    possible_group_cols = ['gpu_type', 'random_input_len', 'random_output_len', 'max_concurrency', 'dataset-name']
-    group_cols = [c for c in possible_group_cols if c in df.columns and df[c].notna().any()]
-    drop_cols = group_cols + ['run_number']
-
-    # columns to average
-    avg_cols = df.drop(columns=drop_cols).columns.tolist()
-    std_cols = ['mean_ttft_ms', 'mean_itl_ms', 'mean_tpot_ms', 'output_throughput', 'total_token_throughput', 'mean_e2el_ms', 'duration']
-
-    # average for each config group 
-    averaged_sweep = sweep_df.groupby(group_cols)[avg_cols].mean().reset_index()
-
-    # add run counts to df
-    run_counts = sweep_df.groupby(group_cols)['run_number'].count().reset_index()
-    run_counts = run_counts.rename(columns={'run_number': 'num_runs'})
-    averaged_sweep = averaged_sweep.merge(run_counts, on=group_cols)
-
-    # add std across runs to df
-    std_across_runs = sweep_df.groupby(group_cols)[std_cols].std().reset_index()
-    std_across_runs = std_across_runs.rename(columns={c: f'std_runs_{c}' for c in std_cols})
-
-    averaged_sweep = averaged_sweep.merge(std_across_runs, on=group_cols)
-
-    return averaged_sweep
-    
-def save_results_sweep(gpu_dirs, output_dir, sort_cols):
-    """ parses and saves sweep data as csv, also saves averaged across runs csv"""
-
-    output_name = '_'.join(p.replace('-', '_') for p in output_dir.parts[-2:])
-
-    all_gpu_dfs = []
-    for gpu_dir in gpu_dirs:
-        gpu_result_df = get_results_sweep(gpu_dir)
-        all_gpu_dfs.append(gpu_result_df)
-
-    sweep = pd.concat(all_gpu_dfs).sort_values(sort_cols)
-    averaged_sweep = average_sweep_results(sweep)
-
-    sweep.to_csv(output_dir / f"{output_name}_results.csv", index=False)
-    averaged_sweep.to_csv(output_dir / f"averaged_{output_name}_results.csv", index=False)
-
-    print(f"saved \n{output_name}_results.csv ({len(sweep)} total runs)")
-    print(f"saved averaged_{output_name}_results.csv({len(averaged_sweep)} total configs)\n")
-
-def save_prompt_type(results_dir):
-    """ creates prompt type column in dataset-comparison summary csv """
-
-    df = pd.read_csv(results_dir)
-    
-    def classify(path):
-        if 'harder_' in str(path):
-            return 'hard'
-        elif 'easy_' in str(path):
-            return 'easy'
-        else:
-            return 'random'
-
-    df['prompt_type'] = df['dataset-path'].apply(classify)
-    df.to_csv(results_dir)
-    print(f"saved {results_dir}")
-
-def aggregate_experiment_csvs(experiment_dir, output_filename=None, glob_pattern="*summary.csv"):
-    """ aggregate all CSVs within an experiment folder into a single CSV """
-    
-    experiment_dir = Path(experiment_dir)
-    output_path = experiment_dir / (output_filename or 'aggregated.csv')
+def load_results(experiment_dir: Path):
+    """ load all csvs into one aggregate csv for given experiment dir """
 
     all_dfs = []
-    for csv_file in sorted(experiment_dir.rglob(glob_pattern)):
-        # skip any previously aggregated output to avoid duplicating on re-runs
-        if csv_file.name.startswith('aggregated'):
-            continue
+    for summary_csv in experiment_dir.rglob("summary.csv"):
         try:
-            df = pd.read_csv(csv_file)
+            df = pd.read_csv(summary_csv)
+            metadata = metadata_from_path(summary_csv)
+            for k, v in metadata.items():
+                df[k] = v
             all_dfs.append(df)
         except Exception as e:
-            print(f"  skipping {csv_file}: {e}")
+            print(f"  skipping {summary_csv}: {e}")
 
     if not all_dfs:
         print(f"no CSVs found in {experiment_dir}")
         return pd.DataFrame()
-
+    
     combined = pd.concat(all_dfs, ignore_index=True)
     if 'Unnamed: 0' in combined.columns:
         combined = combined.drop(columns=['Unnamed: 0'])
 
+    output_path = experiment_dir / (experiment_dir.name.replace('-','_') + '_results.csv')
     combined.to_csv(output_path, index=False)
     print(f"saved {output_path} ({len(combined)} rows)")
     return combined
 
-def average_results(df, output_path=None):
-    """ average sweep results across runs of same configs """
-    df = df.copy()
+def average_results(results_csv_path: Path):
+    """ average results across runs of identical configs """
+
+    df = pd.read_csv(results_csv_path)
 
     # columns that identify a configuration
-    group_cols = [
+    possible_group_cols = [
         'max_concurrency',
         'model_id', 
         'tokenizer_id', 
         'backend', 
         'endpoint_type', 
-        'label',
+        'gpu_type',
+        'tp',
+        'interconnect',
+        'random-input-len',
+        'random-output-len',
+        'random_input_len',
+        'random_output_len',
+        'sharegpt-output-len',
+        'enable-prefix-caching',
+        'dataset-name',
+        'dataset-path',
     ]
-    group_cols = [c for c in group_cols if c in df.columns]
 
-    # drop redundant columns
-    drop_cols = ['Unnamed: 0', 'date', 'run_number', 'num_prompts',]
-    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+    # only group by existing group columns
+    group_cols = [c for c in possible_group_cols if c in df.columns]
+    drop_cols = group_cols + ['run_number']
 
-    # average remain columns by config
-    avg_cols = [c for c in df.columns if c not in group_cols]
-    averaged = df.groupby(group_cols, dropna=False)[avg_cols]\
-        .mean().reset_index()
+    # select columns to average over
+    metric_cols = df.columns.difference(drop_cols)
+    metric_cols = df[metric_cols].select_dtypes(include="number").columns
+
+    averaged = df.groupby(group_cols, dropna=False, as_index=False)\
+        [metric_cols].mean()
     
-    if output_path:
-        averaged.to_csv(output_path, index=False)
-        print(f"saved {output_path} ({len(averaged)} rows)")
+    output_path = results_csv_path.parent / ('averaged_' + results_csv_path.name)
+    averaged.to_csv(output_path, index=False)
+    print(f"saved {output_path} ({len(averaged)} rows)")
+
     return averaged
-    
+
 if __name__ == "__main__":
-    base = Path('./results/single-gpu')
-    # save_results_sweep(
-    #     gpu_dirs=[base / 'seqlen-sweep/a100', base / 'seqlen-sweep/v100'],
-    #     output_dir=base / 'seqlen-sweep',
-    #     sort_cols=['gpu_type', 'random_input_len', 'random_output_len']
-    # )
+    results_dir = Path('./resultscopy')
 
-    # save_results_sweep(
-    #     gpu_dirs=[base / 'concurrency-sweep/fine-grained/a100', base / 'concurrency-sweep/fine-grained/v100'],
-    #     output_dir=base / 'concurrency-sweep/fine-grained',
-    #     sort_cols=['gpu_type', 'max_concurrency']
-    # )
+    # build missing csvs
+    build_summary_csvs(results_dir)
 
-    # save_itl_distributions(
-    #     gpu_dirs=[base / 'concurrency-sweep/fine-grained/a100', base / 'concurrency-sweep/fine-grained/v100'],
-    #     output_dir=base / 'concurrency-sweep/fine-grained',
-    # )
+    # load all summary csvs into an aggregated experiment csv
+    df = load_results(results_dir / 'seqlen-sweep')
+    df = load_results(results_dir / 'concurrency-sweep')
+    df = load_results(results_dir / 'dataset-comparison')
 
-    # save_results_sweep(
-    #     gpu_dirs=[base / 'dataset-comparison/a100'],
-    #     output_dir=base / 'dataset-comparison',
-    #     sort_cols=['gpu_type', 'max_concurrency', 'random_input_len',]
-    # )
+    # average experiment results
+    df = average_results(results_dir / 'seqlen-sweep/seqlen_sweep_results.csv')
+    df = average_results(results_dir / 'concurrency-sweep/concurrency_sweep_results.csv')
 
-    # base = Path('./results/multi-gpu')
-    # combined = aggregate_experiment_csvs(
-    #     experiment_dir=base / 'concurrency-sweep/a100',
-    #     output_filename='aggregated_concurrency_sweep.csv',
-    # )
 
-    # average_results(combined, output_path=Path(base / 'concurrency-sweep/a100' / 'averaged_concurrency_sweep.csv'))
+
 
 
