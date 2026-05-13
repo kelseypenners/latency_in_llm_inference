@@ -86,10 +86,28 @@ config_nccl_debug=$(echo "$merged" | jq -r '.nccl_debug // ""')
 outdir="${RESULTS_DIR}/${experiment}/${model_name}/${gpu_type}/tp${tp}/${interconnect}"
 mkdir -p "$outdir"
 
-# create run metadata dir
-timestamp=$(date +%Y%m%d_%H%M%S)
-meta_dir="${outdir}/run_${timestamp}"
-mkdir -p "$meta_dir"
+# create or locate metadata dir
+if [ -n "$resume" ]; then
+    meta_dir=""
+    # search for vLLM resume dir
+    for d in "${outdir}"/run_*; do
+        if [ -d "$d/$resume" ]; then
+            meta_dir="$d"
+            break
+        fi
+    done
+
+    if [ -z "$meta_dir" ]; then
+        echo "error: could not find resume run '$resume'"
+        exit 1
+    fi
+
+    echo "found resume directory: $meta_dir"
+else
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    meta_dir="${outdir}/run_${timestamp}"
+    mkdir -p "$meta_dir"
+fi
 
 label="${experiment}_tp${tp}_${interconnect}"
 
