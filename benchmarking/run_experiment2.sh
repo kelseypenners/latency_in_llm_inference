@@ -86,6 +86,11 @@ config_nccl_debug=$(echo "$merged" | jq -r '.nccl_debug // ""')
 outdir="${RESULTS_DIR}/${experiment}/${model_name}/${gpu_type}/tp${tp}/${interconnect}"
 mkdir -p "$outdir"
 
+# create run metadata dir
+timestamp=$(date +%Y%m%d_%H%M%S)
+meta_dir="${outdir}/run_${timestamp}"
+mkdir -p "$meta_dir"
+
 label="${experiment}_tp${tp}_${interconnect}"
 
 # write params files
@@ -124,7 +129,7 @@ fi
 if [ -n "$nccl_debug" ]; then
     # enable NCCL_DEBUG
     nccl_env+=(NCCL_DEBUG=$nccl_debug)
-    nccl_env+=(NCCL_DEBUG_FILE="${outdir}/nccl_debug_%h_%p.log")
+    nccl_env+=(NCCL_DEBUG_FILE="${meta_dir}/nccl_debug_%h_%p.log")
 fi
 
 # label flag
@@ -144,11 +149,6 @@ resume_flag=""
 if [ "$resume" != "" ]; then
     resume_flag="--resume $resume"
 fi
-
-# save metadata
-timestamp=$(date +%Y%m%d_%H%M%S)
-meta_dir="${outdir}/run_${timestamp}"
-mkdir -p "$meta_dir"
 
 # save merged config
 echo "$merged" | jq \
