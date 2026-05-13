@@ -13,26 +13,36 @@ set_figure_style()
 # ========================================================================
 # data loading
 # ========================================================================
-multigpu_path = "../results/multi-gpu/concurrency-sweep/a100/averaged_concurrency_sweep.csv"
+multigpu_path = "../results/multi-gpu/concurrency-sweep/averaged_concurrency_sweep.csv"
 singlegpu_path = "../results/single-gpu/concurrency-sweep/fine-grained/averaged_concurrency_sweep_fine_grained_results.csv"
 
 multigpu_data= pd.read_csv(multigpu_path)
 singlegpu_data= pd.read_csv(singlegpu_path)
 
+
 derived_metrics_path = "../results/multi-gpu/concurrency-sweep/a100/derived_metrics.csv"
 derived = pd.read_csv(derived_metrics_path)
+
 # ========================================================================
 # preprocessing
 # ========================================================================
 def filter_df(df, col, val):
     return df[df[col] == val].copy()
 
-# filter csv to group data for plotting
-tp2_df = filter_df(multigpu_data, 'label', 'mainsweep')
-tp2_nwfb_df = filter_df(multigpu_data, 'label', 'networkfallback')
-tp2_shm_df = filter_df(multigpu_data, 'label', 'p2pdisabled')
-tp4_df = filter_df(multigpu_data, 'label', 'mainsweep_tp4')
-tp1_df = filter_df(singlegpu_data, 'gpu_type', 'a100')
+
+# filter csv for a100 configs
+tp1_a100_df = filter_df(singlegpu_data, 'gpu_type', 'a100')
+multigpu_a100 = filter_df(multigpu_data, 'gpu_type', 'a100')
+tp2_a100_df = filter_df(multigpu_a100, 'label', 'mainsweep')
+tp2_a100_nwfb_df = filter_df(multigpu_a100, 'label', 'networkfallback')
+tp2_a100_shm_df = filter_df(multigpu_a100, 'label', 'p2pdisabled')
+tp4_a100_df = filter_df(multigpu_a100, 'label', 'mainsweep_tp4')
+
+# filter csv for v100 data
+tp1_v100_df = filter_df(singlegpu_data, 'gpu_type', 'v100')
+multigpu_v100 = filter_df(multigpu_data, 'gpu_type', 'v100')
+tp2_v100_df = filter_df(multigpu_v100, 'label', 'mainsweep')
+tp4_v100_df = filter_df(multigpu_v100, 'label', 'mainsweep_tp4')
 
 # ========================================================================
 # kv cache saturation points
@@ -70,6 +80,7 @@ tp2_a100_saturation = kv_saturation_point(80, 0.85, activation_frac=0.05)
 tp2_v100_saturation = kv_saturation_point(64, 0.85)
 
 tp4_a100_saturation = kv_saturation_point(160, 0.85)
+tp4_v100_saturation = kv_saturation_point(128, 0.85)
 
 # saturation lines for plotting
 tp1_a100_line = (tp1_a100_saturation, 'KV saturation:\nTP=1')
@@ -81,6 +92,7 @@ print(f"V100 saturation point at TP=1: {tp1_v100_saturation}\n")
 print(f"A100 saturation point at TP=2: {tp2_a100_saturation}")
 print(f"V100 saturation point at TP=2: {tp2_v100_saturation}\n")
 print(f"A100 saturation point at TP=4: {tp4_a100_saturation}")
+print(f"V100 saturation point at TP=4: {tp4_v100_saturation}")
 
 # ========================================================================
 # plotting
@@ -131,7 +143,7 @@ def plot_metric_vs_concurrency(
 sub = dict(gpu='shy-fec (A100s)', model='Llama-3.1-8B', config='ISL/OSL = 512/512')
 
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp4_a100_df],
     metric="mean_ttft_ms",
     ylabel="TTFT",
     title="TTFT Across TP Configs",
@@ -144,7 +156,7 @@ fig = plot_metric_vs_concurrency(
     subtitle_info=sub
 )
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp4_a100_df],
     metric="mean_itl_ms",
     ylabel="ITL (ms)",
     title="ITL Across Tensor Parallelism Configs",
@@ -156,7 +168,7 @@ fig = plot_metric_vs_concurrency(
     subtitle_info=sub
 )
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp4_a100_df],
     metric="mean_e2el_ms",
     ylabel="E2EL(ms)",
     title="E2EL Across Tensor Parallelism Configs",
@@ -165,7 +177,7 @@ fig = plot_metric_vs_concurrency(
     subtitle_info=sub
 )
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp4_a100_df],
     metric="output_throughput",
     ylabel="Output Throughput (tokens/s)",
     title="Output Throughput Across TP Configs",
@@ -184,7 +196,7 @@ fig = plot_metric_vs_concurrency(
 sub = dict(gpu='shy-fec (A100s)', model='Llama-3.1-8B', config='ISL/OSL = 512/512')
 
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df],
     metric="output_throughput",
     ylabel="Output Throughput (tokens/s)",
     title="Output Throughput Across Interconnects",
@@ -194,7 +206,7 @@ fig = plot_metric_vs_concurrency(
 )
 
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df],
     metric="mean_itl_ms",
     ylabel="ITL (ms)",
     title="ITL Across Interconnects",
@@ -204,7 +216,7 @@ fig = plot_metric_vs_concurrency(
 )
 
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df],
     metric="mean_e2el_ms",
     ylabel="E2E Latency (ms)",
     title="E2EL Across Interconnects",
@@ -214,7 +226,7 @@ fig = plot_metric_vs_concurrency(
 )
 
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df],
     metric="mean_ttft_ms",
     ylabel="TTFT",
     title="TTFT Across Interconnects",
@@ -229,7 +241,7 @@ fig = plot_metric_vs_concurrency(
 # ========================================================================
 # across all configs
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df, tp4_a100_df],
     metric="mean_itl_ms",
     ylabel="ITL (ms)",
     title="ITL Across All Configs",
@@ -238,7 +250,7 @@ fig = plot_metric_vs_concurrency(
     subtitle_info=sub,
 )
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df, tp4_a100_df],
     metric="mean_ttft_ms",
     ylabel="TTFT (ms)",
     title="TTFT Across All Configs",
@@ -247,7 +259,7 @@ fig = plot_metric_vs_concurrency(
     subtitle_info=sub,
 )
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df, tp4_a100_df],
     metric="mean_e2el_ms",
     ylabel="E2EL (ms)",
     title="E2EL Across All Configs",
@@ -256,7 +268,7 @@ fig = plot_metric_vs_concurrency(
     subtitle_info=sub,
 )
 fig = plot_metric_vs_concurrency(
-    [tp1_df, tp2_df, tp2_shm_df, tp2_nwfb_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp2_a100_shm_df, tp2_a100_nwfb_df, tp4_a100_df],
     metric="output_throughput",
     ylabel="Throughput (tokens/s)",
     title="Throughput Across All Configs",
@@ -444,7 +456,7 @@ fig = plot_throughput_efficiency(
 #     subtitle_info=sub
 # )
 fig = plot_normalized_throughput(
-    [tp1_df, tp2_df, tp4_df],
+    [tp1_a100_df, tp2_a100_df, tp4_a100_df],
     title="Per-GPU Normalized Output Throughput",
     labels=["TP=1", "TP=2", "TP=4"],
     colors=["#4C9BE8", "#E85C4C", "#5CB85C"],
@@ -457,4 +469,92 @@ fig = plot_speedup_all(
     labels=labels,
     legend_labels=legend_labels,
 )
+
+
+
+#%% ========================================================================
+# A100 vs V100 comparison (TP=2)
+# ==========================================================================
+
+sub_cmp = dict(model='Llama-3.1-8B', config='ISL/OSL = 512/512, TP=2')
+
+fig = plot_metric_vs_concurrency(
+    [tp1_a100_df, tp2_a100_df, tp1_v100_df, tp2_v100_df],
+    metric="mean_itl_ms",
+    ylabel="ITL (ms)",
+    title="ITL: A100 vs V100 (TP=1 and TP=2)",
+    labels=["A100 TP=1", "A100 TP=2 NVLink", "V100 TP=1", "V100 TP=2 PCIe"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C", "#E8A84C"],
+    subtitle_info=sub_cmp,
+)
+fig = plot_metric_vs_concurrency(
+    [tp1_a100_df, tp2_a100_df, tp1_v100_df, tp2_v100_df],
+    metric="mean_ttft_ms",
+    ylabel="TTFT (ms)",
+    title="TTFT: A100 vs V100 (TP=1 and TP=2)",
+    labels=["A100 TP=1", "A100 TP=2 NVLink", "V100 TP=1", "V100 TP=2 PCIe"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C", "#E8A84C"],
+    log_scale=True,
+    subtitle_info=sub_cmp,
+)
+fig = plot_metric_vs_concurrency(
+    [tp1_a100_df, tp2_a100_df, tp1_v100_df, tp2_v100_df],
+    metric="output_throughput",
+    ylabel="Output Throughput (tokens/s)",
+    title="Throughput: A100_vs V100 (TP=1 and TP=2)",
+    labels=["A100 TP=1", "A100 TP=2 NVLink", "V100 TP=1", "V100 TP=2 PCIe"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C", "#E8A84C"],
+    subtitle_info=sub_cmp,
+)
+fig = plot_metric_vs_concurrency(
+    [tp1_a100_df, tp2_a100_df, tp1_v100_df, tp2_v100_df],
+    metric="mean_e2el_ms",
+    ylabel="E2E Latency (ms)",
+    title="E2EL: A100 vs V100 (TP=1 and TP=2)",
+    labels=["A100 TP=1", "A100 TP=2 NVLink", "V100 TP=1", "V100 TP=2 PCIe"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C", "#E8A84C"],
+    subtitle_info=sub_cmp,
+)
+# %%
+
+sub = dict(gpu='funnotch (V100s)', model='Llama-3.1-8B', config='ISL/OSL = 512/512')
+
+fig = plot_metric_vs_concurrency(
+    [tp1_v100_df, tp2_v100_df, tp4_v100_df],
+    metric="mean_ttft_ms",
+    ylabel="TTFT",
+    title="TTFT Across TP Configs",
+    labels=["TP=1", "TP=2", "TP=4"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C"],
+    log_scale=True,
+    subtitle_info=sub
+)
+fig = plot_metric_vs_concurrency(
+    [tp1_v100_df, tp2_v100_df, tp4_v100_df],
+    metric="mean_itl_ms",
+    ylabel="ITL (ms)",
+    title="ITL Across Tensor Parallelism Configs",
+    labels=["TP=1", "TP=2", "TP=4"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C"],
+    subtitle_info=sub
+)
+fig = plot_metric_vs_concurrency(
+    [tp1_v100_df, tp2_v100_df, tp4_v100_df],
+    metric="mean_e2el_ms",
+    ylabel="E2EL(ms)",
+    title="E2EL Across Tensor Parallelism Configs",
+    labels=["TP=1", "TP=2", "TP=4"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C"],
+    subtitle_info=sub
+)
+fig = plot_metric_vs_concurrency(
+    [tp1_v100_df, tp2_v100_df, tp4_v100_df],
+    metric="output_throughput",
+    ylabel="Output Throughput (tokens/s)",
+    title="Output Throughput Across TP Configs",
+    labels=["TP=1", "TP=2", "TP=4"],
+    colors=["#4C9BE8", "#E85C4C", "#5CB85C"],
+    subtitle_info=sub
+)
+
 # %%
