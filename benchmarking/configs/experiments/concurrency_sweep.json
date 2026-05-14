@@ -1,7 +1,7 @@
 {
     "experiment": "concurrency-sweep",
     "bench_cmd_extra": "--backend openai --save-result --dataset-name random --random-input-len 512 --random-output-len 512  --metric-percentiles 75,90,95,99 --num-warmups 20 --ignore-eos --ready-check-timeout-sec 2000",
-     "bench_params": [
+    "bench_params": [
         {"max-concurrency": 4,    "num-prompts": 200},
         {"max-concurrency": 8,    "num-prompts": 200},
         {"max-concurrency": 16,   "num-prompts": 200},
@@ -21,5 +21,6 @@
         {"max-concurrency": 1536, "num-prompts": 3000},
         {"max-concurrency": 1792, "num-prompts": 3000},
         {"max-concurrency": 2048, "num-prompts": 3000}],
+    "serve_cmd_extra": "--port 8000 --max-num-seqs 2048 --max-model-len 2048",
     "dry_run": false
 }

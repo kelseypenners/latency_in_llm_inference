@@ -4,20 +4,21 @@
         "bench_params":[    
             {
                 "dataset-name": "sharegpt",
-                "dataset-path": "./random_prompt_dataset.json",
+                "dataset-path": "./datasets/random_prompt_dataset.json",
                 "sharegpt-output-len": 64
             },
             {
                 "dataset-name": "sharegpt",
-                "dataset-path": "./easy_prompt_dataset.json",
+                "dataset-path": "./datasets/easy_prompt_dataset.json",
                 "sharegpt-output-len": 64
             },
             {
                 "dataset-name": "sharegpt",
-                "dataset-path": "./harder_prompt_dataset.json",
+                "dataset-path": "./datasets/harder_prompt_dataset.json",
                 "sharegpt-output-len": 64
             }],
         "serve_params":[
             {"enable-prefix-caching": true},
-            {"enable-prefix-caching": false}]
+            {"enable-prefix-caching": false}],
+        "serve_cmd_extra": "--port 8000 --max-num-seqs 2048 --max-model-len 2048"
 }

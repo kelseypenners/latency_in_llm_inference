@@ -1,5 +1,4 @@
 {
     "gpu_type": "a100",
-    "gpu_mem": 0.85,
-    "serve_cmd_extra": "--port 8000 --max-num-seqs 2048 --max-model-len 2048"
+    "gpu_mem": 0.85
 }
