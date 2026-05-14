@@ -1,11 +1,45 @@
 #!/bin/bash
 # run_experiment.sh
-# usage: ./run_experiment.sh --experiment <name> --hardware <name> --model <name> --gpu-ids <ids> [options]
 
 set -eu
 
 CONFIGS_DIR="$(dirname "$0")/configs"
 RESULTS_DIR="../results"
+
+#-----------------------------------------------
+# helpers
+#-----------------------------------------------
+
+usage() {
+    cat <<EOF
+
+usage: ./$(basename "$0") [required flags] [options]
+ 
+required:
+  --experiment <name>      experiment config name (configs/experiments/<name>.json)
+  --hardware   <name>      hardware config name   (configs/hardware/<name>.json)
+  --model      <name>      model config name      (configs/models/<name>.json)
+  --gpu-ids    <ids>       comma-separated CUDA device IDs
+ 
+options:
+  --interconnect <name>    interconnect config (default up to NCCL)
+  --tp <n>                 tensor parallel degree (default: 1)
+  --runs <n>               number of runs per config (default: 1)
+  --nccl-debug <level>     enable NCCL debug logging (e.g. INFO, WARN)
+  --resume <timestamp>     resume a previous run by its vLLM output timestamp
+  --dry-run                print commands without running
+  --help                   show this message
+
+EOF
+    exit 0
+}
+
+# exit with error
+die() { echo "error: $*" >&2; exit 1; }
+
+#-----------------------------------------------
+# parse and validate args
+#-----------------------------------------------
 
 # default config
 experiment=""
@@ -14,10 +48,10 @@ model=""
 interconnect="default"
 gpu_ids=""
 tp=1
-runs="1"
-dry_run=false
-resume=""
+runs=1
 nccl_debug=""
+resume=""
+dry_run=false
 
 # parse CLI args
 while [[ $# -gt 0 ]]; do
@@ -29,29 +63,23 @@ while [[ $# -gt 0 ]]; do
         --interconnect) interconnect="$2"; shift 2;;
         --tp) tp="$2"; shift 2;;
         --runs) runs="$2"; shift 2;;
-        --dry-run) dry_run=true; shift;;
-        --resume) resume="$2"; shift 2;;
         --nccl-debug) nccl_debug="$2"; shift 2;;
-        *)
-            echo "unknown argument: $1"
-            echo "usage: ./run_experiment.sh --experiment <name> --hardware <name> --model <name> --gpu-ids <ids>" 
-            echo "                          [--interconnect <name>] [--tp <n>] [--runs <n>] [--dry-run] [--resume <timestamp>] [--nccl-debug <level>]"
-            exit 1
-            ;;
+        --resume) resume="$2"; shift 2;;
+        --dry-run) dry_run=true; shift;;
+        --help) usage ;;
+        *) die "unknown argument: $1. use --help for usage!" ;;
     esac
 done
 
 # check for required args
 missing=()
-[ -z "$experiment" ] && missing+=("--experiment")
-[ -z "$hardware" ] && missing+=("--hardware")
-[ -z "$model" ] && missing+=("--model")
-[ -z "$gpu_ids" ]  && missing+=("--gpu-ids")
+[[ -z "$experiment" ]] && missing+=("--experiment")
+[[ -z "$hardware" ]] && missing+=("--hardware")
+[[ -z "$model" ]] && missing+=("--model")
+[[ -z "$gpu_ids" ]] && missing+=("--gpu-ids")
+[[ ${#missing[@]} -gt 0 ]] && die "missing required arguments: ${missing[*]}"
 
-if [ ${#missing[@]} -gt 0 ]; then
-    echo "error: missing required arguments: ${missing[*]}"
-    exit 1
-fi
+[[ "$tp" -eq 1 ]] && interconnect="default"
 
 # read config files
 experiment_config="${CONFIGS_DIR}/experiments/${experiment}.json"
@@ -60,11 +88,12 @@ model_config="${CONFIGS_DIR}/models/${model}.json"
 interconnect_config="${CONFIGS_DIR}/interconnect/${interconnect}.json"
 
 for f in "$experiment_config" "$hardware_config" "$model_config" "$interconnect_config"; do
-    if [ ! -f "$f" ]; then
-        echo "error: config file not found: $f"
-        exit 1
-    fi
+    [[ ! -f "$f" ]] && die "config file not found: $f"
 done
+
+#-----------------------------------------------
+# merge configs and get values
+#-----------------------------------------------
 
 # merge configs
 merged=$(jq -s '.[0] * .[1] * .[2] * .[3]' \
@@ -82,136 +111,153 @@ disable_p2p=$(echo "$merged" | jq -r '.disable_p2p // false')
 network_fallback=$(echo "$merged" | jq -r '.network_fallback // false')
 config_nccl_debug=$(echo "$merged" | jq -r '.nccl_debug // ""')
 
-# label for easy reading of csv
-label="${experiment}_tp${tp}_${interconnect}"
+# CLI --nccl_debug overrides config value
+[[ -z "$nccl_debug" ]] && nccl_debug="$config_nccl_debug"
 
-# write params files
-bench_params_flag=""
-serve_params_flag=""
+#-----------------------------------------------
+# write temp params file
+#-----------------------------------------------
+
+bench_params_file=""
+serve_params_file=""
+
+# clean up temp files on exit
+cleanup() {
+    rm -f "$bench_params_file" "$serve_params_file"
+}
+trap cleanup EXIT
+
 if echo "$merged" | jq -e '.bench_params' > /dev/null 2>&1; then
     bench_params_file=$(mktemp /tmp/bench_params_XXXX.json)
     echo "$merged" | jq '.bench_params' > "$bench_params_file"
-    bench_params_flag="--bench-params $bench_params_file"
 fi
 if echo "$merged" | jq -e '.serve_params' > /dev/null 2>&1; then
     serve_params_file=$(mktemp /tmp/serve_params_XXXX.json)
     echo "$merged" | jq '.serve_params' > "$serve_params_file"
-    serve_params_flag="--serve-params $serve_params_file"
 fi
 
-# NCCL env vars for interconnect control
+#-----------------------------------------------
+# NCCL environment variables
+#-----------------------------------------------
+
 nccl_env=()
-nccl_comm="default (best available)"
-if [ -z "$nccl_debug" ]; then
-    nccl_debug="$config_nccl_debug"
+nccl_comm=""
+
+if [[ "$tp" -gt 1 ]]; then
+    nccl_comm="default (best available)"
+    if [[ "$disable_p2p" == true ]]; then
+        # disable using NCCL_P2P_DISABLE
+        nccl_env+=(NCCL_P2P_DISABLE=1)
+        nccl_comm="SHM (P2P disabled)" 
+    fi
+    if [[ "$network_fallback" == true ]]; then
+        # disable using NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
+        nccl_env=(NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1)
+        nccl_comm="socket (P2P + SHM disabled)"
+    fi
 fi
 
-if [ "$disable_p2p" = true ]; then
-    # disable using NCCL_P2P_DISABLE
-    nccl_env=(NCCL_P2P_DISABLE=1)
-    nccl_comm="P2P disabled (SHM transport)" 
-fi
-if [ "$network_fallback" = true ]; then
-    # disable using NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
-    nccl_env=(NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1)
-    nccl_comm="network fallback (P2P + SHM disabled, socket transport)"
-fi
+#-----------------------------------------------
+# output directory
+# results/{experiment}/{model_name}/{gpu_type}/tp{n}/{interconnect}/run_{TS}
+# vLLM will create TS'd subdir here
+#-----------------------------------------------
 
-# label flag
-label_flag=""
-if [ "$label" != "" ]; then
-    label_flag="--label $label"
-fi
+outdir="${RESULTS_DIR}/${experiment}/${model_name}/${gpu_type}/tp${tp}/${interconnect}"
+timestamp=$(date +%Y%m%d_%H%M%S)
+run_dir="${outdir}/run_${timestamp}"
+label="${experiment}_tp${tp}_${interconnect}"
 
-# resume flag
-resume_flag=""
-if [ "$resume" != "" ]; then
-    resume_flag="--resume $resume"
-fi
-
+#-----------------------------------------------
 # print summary
+#-----------------------------------------------
+
 echo "================================================================================"
-echo "experiment    : $experiment  (label = $label)"
+echo "experiment    : $experiment"
 echo "model         : $model_name ($model_path)"
 echo "gpu id(s)     : $gpu_ids  ($gpu_type)"
 echo "gpu mem       : $gpu_mem"
-echo "communication : $nccl_comm"
 echo "tp            : $tp"
+[[ -n "$nccl_comm" ]] && echo "interconnect  : $nccl_comm"
 echo "runs          : $runs"
-if [ -n "$nccl_debug" ]; then
-    echo "nccl debug    : $nccl_debug" 
-fi
-if [ "$dry_run" = true ]; then
-    echo "mode          : DRY RUN"
-fi
-if [ "$resume" != "" ]; then
-    echo "resuming run  : $resume"
-fi
+echo "output dir    : $outdir"
+[[ -n "$nccl_debug" ]] && echo "nccl debug    : $nccl_debug" 
+[[ -n "$resume" ]] && echo "resuming run  : $resume"
+[[ "$dry_run" == true ]] && echo "mode          : DRY RUN"
 echo "================================================================================"
 echo ""
 
-# dry run then exit
-if [ "$dry_run" = true ]; then
-    env CUDA_VISIBLE_DEVICES=$gpu_ids "${nccl_env[@]}" \
-        vllm bench sweep serve \
-        --serve-cmd "vllm serve ${model_path} \
-            --tensor-parallel-size ${tp} \
-            --gpu-memory-utilization ${gpu_mem} ${serve_extra}" \
-        --bench-cmd "vllm bench serve \
-            --model ${model_path} ${label_flag} ${bench_extra}" \
-        --num-runs "$runs" \
-        $bench_params_flag $serve_params_flag \
-        --dry-run $resume_flag
-    rm -f "${bench_params_file:-}" "${serve_params_file:-}"
+#-----------------------------------------------
+# build vllm command fragments
+#-----------------------------------------------
+
+serve_cmd="vllm serve ${model_path} \
+    --tensor-parallel-size ${tp} \
+    --gpu-memory-utilization ${gpu_mem} ${serve_extra}"
+
+bench_cmd="vllm bench serve \
+    --model ${model_path} \
+    --label ${label} ${bench_extra}"
+
+sweep_cmd=(
+    vllm bench sweep serve
+    --serve-cmd "$serve_cmd"
+    --bench-cmd "$bench_cmd"
+    --num-runs "$runs"
+)
+[[ -n "$bench_params_file" ]] && sweep_cmd+=(--bench-params "$bench_params_file")
+[[ -n "$serve_params_file" ]] && sweep_cmd+=(--serve-params "$serve_params_file")
+
+#-----------------------------------------------
+# dry run
+#-----------------------------------------------
+
+if [[ "$dry_run" == true ]]; then
+    env CUDA_VISIBLE_DEVICES="$gpu_ids" "${nccl_env[@]}" \
+        "${sweep_cmd[@]}" --dry-run
     exit 0
 fi
 
-# create out dir
-outdir="${RESULTS_DIR}/${experiment}/${model_name}/${gpu_type}/tp${tp}/${interconnect}"
+#-----------------------------------------------
+# make outdir
+# create rundir or resume from existing
+# save merged config
+#-----------------------------------------------
+
 mkdir -p "$outdir"
 
-# create or locate metadata dir
-if [ -n "$resume" ]; then
-    meta_dir=""
+# create or locate run dir
+if [[ -n "$resume" ]]; then
+    run_dir=""
     # search for vLLM resume dir
     for d in "${outdir}"/run_*; do
-        if [ -d "$d/$resume" ]; then
-            meta_dir="$d"
+        if [[ -d "$d/$resume" ]]; then
+            run_dir="$d"
             break
         fi
     done
 
-    if [ -z "$meta_dir" ]; then
-        echo "error: could not find resume run '$resume'"
-        exit 1
-    fi
-
-    echo "found resume directory: $meta_dir"
+    [[ -z "$run_dir" ]] && die "could not find resume run '$resume'"
+    echo "found resume directory: $run_dir"
+    sweep_cmd+=(--resume "$resume")
 else
-    timestamp=$(date +%Y%m%d_%H%M%S)
-    meta_dir="${outdir}/run_${timestamp}"
-    mkdir -p "$meta_dir"
+    mkdir -p "$run_dir"
 fi
 
-# enable NCCL_DEBUG if requested
-if [ -n "$nccl_debug" ]; then
-    nccl_env+=(NCCL_DEBUG=$nccl_debug)
-    nccl_env+=(NCCL_DEBUG_FILE="${meta_dir}/nccl_debug_%h_%p.log")
-fi
-
-# save merged config
+# save merged config in results dir
 echo "$merged" | jq \
     --arg gpu_ids "$gpu_ids" \
     --argjson tp "$tp" \
     --argjson runs "$runs" \
     --arg interconnect "$interconnect" \
     '. + {gpu_ids: $gpu_ids, tp: $tp, runs: $runs, interconnect: $interconnect}' \
-    > "${meta_dir}/config_merged.json"
+    > "${run_dir}/config_merged.json"
 
+#-----------------------------------------------
+# GPU power & NCCL logging
+#-----------------------------------------------
 
-# GPU power logging
-timestamp=$(date +%d-%m-%Y_%H-%M-%S)
-power_log="${meta_dir}/gpu_power.csv"
+power_log="${run_dir}/gpu_power.csv"
 
 # log every 5 seconds
 nvidia-smi \
@@ -220,38 +266,39 @@ nvidia-smi \
   -l 5 > "$power_log" &
 POWER_LOG_PID=$!
 
-# cleanup temp files
-cleanup() {
-    rm -f "${bench_params_file:-}" "${serve_params_file:-}"
-    if ps -p $POWER_LOG_PID > /dev/null 2>&1; then
-        kill $POWER_LOG_PID
-        wait $POWER_LOG_PID 2>/dev/null
+stop_power_log() {
+    cleanup # also remove temp files
+    if [[ -n "${POWER_LOG_PID:-}" ]] && ps -p "$POWER_LOG_PID" > /dev/null 2>&1; then
+        kill "$POWER_LOG_PID"
+        wait "$POWER_LOG_PID" 2>/dev/null
         echo "power logging stopped"
     fi
 }
-trap cleanup EXIT
+trap stop_power_log EXIT
 
+# NCCL logging
+if [[ -n "$nccl_debug" ]]; then
+    nccl_env+=(NCCL_DEBUG=$nccl_debug)
+    nccl_env+=(NCCL_DEBUG_FILE="${run_dir}/nccl_debug_%h_%p.log")
+fi
+
+#-----------------------------------------------
 # run sweep
-env CUDA_VISIBLE_DEVICES=$gpu_ids "${nccl_env[@]}" \
-    vllm bench sweep serve \
-    --serve-cmd "vllm serve ${model_path} \
-        --tensor-parallel-size ${tp} \
-        --gpu-memory-utilization ${gpu_mem} ${serve_extra}" \
-    --bench-cmd "vllm bench serve \
-        --model ${model_path} ${label_flag} ${bench_extra}" \
-    --num-runs "$runs" \
-    $bench_params_flag $serve_params_flag \
-    --output-dir "$meta_dir" \
-    $dry_run_flag $resume_flag
+#-----------------------------------------------
 
+env CUDA_VISIBLE_DEVICES="$gpu_ids" "${nccl_env[@]}" \
+    "${sweep_cmd[@]}" --output-dir "$run_dir" 
+
+#-----------------------------------------------
 # log experiment
+#-----------------------------------------------
+
 log="${RESULTS_DIR}/experiment_log.csv"
 date_str=$(date +%d-%m-%Y)
-if [ ! -f "$log" ]; then
+if [[ ! -f "$log" ]]; then
     echo "date,experiment,model_name,gpu_type,tp,interconnect,gpu_ids,outdir" > "$log"
 fi
-echo "${date_str},${experiment},${model_name},${gpu_type},${tp},${interconnect},${gpu_ids},${outdir}" >> "$log"
-
+echo "${date_str},${experiment},${model_name},${gpu_type},${tp},${interconnect},${gpu_ids},${run_dir}" >> "$log"
 echo "========================================"
 echo "benchmark suite completed!"
 echo "results saved to: $outdir"
