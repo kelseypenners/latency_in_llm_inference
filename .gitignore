@@ -6,3 +6,4 @@ idk_*
 ShareGPT*
 scratch*
 __pycache__/
+*.ipynb
