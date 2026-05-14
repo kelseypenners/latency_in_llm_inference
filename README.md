@@ -38,7 +38,7 @@ cd benchmarking
     --model <name> \ 
     --gpu-ids <ids> \
     [--tp <n>] [--interconnect <name>] [--runs <n>] \
-    [--dry-run] [--nccl-debug <mode>]
+    [--dry-run] [--nccl-debug <mode>] [--help]
 ```
 
 The script merges four JSON configs (experiment + hardware + model + interconnect), sets any NCCL environment variables and launces vLLM benchmarking using given parameters. 
