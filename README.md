@@ -13,7 +13,7 @@ Thesis repo for benchmarking LLM inference performance across single and multi-G
 ```
 benchmarking/       run_experiment.sh + JSON configs
 results/            raw benchmark output (not committed)
-analysis/           parsing and derived metric
+analysis/           parsing and derived metrics
 visualizing/        plotting scripts
 utils/              misc helpers
 archive/            old scripts and archived data
@@ -60,9 +60,9 @@ TP=2 forcing network socket transport (P2P + SHM disabled):
 ./run_experiment.sh --experiment concurrency_sweep --hardware a100 -model llama_8b --gpu-ids 0,2 --tp 2 --interconnect network_socket
 ```
 
-Add `--nccl-debug INFO` to any multi-GPU run to get NCCL debug logs, useful for verifying which transport is actually being used between GPUs.
+Add `--nccl-debug INFO` to any multi-GPU run to get NCCL debug logs, which is useful for verifying which transport is actually being used between GPUs.
 
-Add `--dry-run` to simulate command without actually running anything yet. 
+Add `--dry-run` to simulate the command without actually running anything yet. 
 
 Add `--resume {vllm_timestamp}` to resume a vLLM sweep from the last detected checkpoint.
 
@@ -78,7 +78,9 @@ There are three transport configurations for multi-GPU runs:
 | p2p_disabled     | `NCCL_P2P_DISABLE=1`                         | SHM            |
 | network_socket   | `NCCL_P2P_DISABLE=1` + `NCCL_SHM_DISABLE=1` | TCP socket     |
 
-Transport can be verified by inspect NCCL debug logs by looking for `P2P/CUMEM`, `SHM/direct/direct`, `NET/Socket/0`, etc..
+NCCL selects the fastest available transport between GPUs by default: NVLink when present (on shy-fec), PCIe otherwise (on funnotch). The three interconnect configs control which transport NCCL uses by disabling faster paths. Setting `NCCL_P2P_DISABLE=1` disables direct GPU-to-GPU transfers and forces traffic through shared CPU memory (SHM) via the PCIe bus. Adding `NCCL_SHM_DISABLE=1` on top removes the shared memory path, forcing a fall back to TCP socket over the network stack.
+
+The transport actually used can be verified by inspecting NCCL debug logs, looking for `P2P/CUMEM`, `SHM/direct/direct`, `NET/Socket/0`, etc..
 
 ---
 
