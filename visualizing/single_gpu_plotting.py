@@ -9,11 +9,11 @@ import ast
 from plot_utils import *
 
 # load experiment data
-seqlen_df = pd.read_csv("../resultscopy/seqlen-sweep/averaged_seqlen_sweep_results.csv")
-concurrency_df = pd.read_csv("../resultscopy/concurrency-sweep/averaged_concurrency_sweep_results.csv")
+seqlen_df = pd.read_csv("../results/seqlen-sweep/averaged_seqlen_sweep_results.csv")
+concurrency_df = pd.read_csv("../results/concurrency-sweep/averaged_concurrency_sweep_results.csv")
 # load prompt type data
-prompttype_df = pd.read_csv('../results/single-gpu/dataset-comparison/prompttype_10runs_1prompt.csv')
-prompttype_df_2 = pd.read_csv('../results/single-gpu/dataset-comparison/prompttype_prefixcache_results.csv')
+prompttype_df = pd.read_csv('../archive/results_archive/single-gpu/dataset-comparison/prompttype_10runs_1prompt.csv')
+prompttype_df_2 = pd.read_csv('../archive/results_archive/single-gpu/dataset-comparison/prompttype_prefixcache_results.csv')
 
 # filter for gpu specific seqlen data
 a100_seqlen_data = filter_df(seqlen_df, gpu_type = 'a100')
@@ -22,11 +22,11 @@ v100_seqlen_data = filter_df(seqlen_df, gpu_type ='v100')
 # filter for gpu specific concurrency data
 a100_concurrency_data = filter_df(concurrency_df, 
                                   gpu_type = 'a100',
-                                  model_id = '../Llama-3.1-8B',
+                                  model_name = 'llama-3.1-8b',
                                   tp = 1)
 v100_concurrency_data = filter_df(concurrency_df, 
                                   gpu_type = 'v100',
-                                  model_id = '../Llama-3.1-8B',
+                                  model_name= 'llama-3.1-8b',
                                   tp = 1)
 
 set_figure_style()
@@ -212,7 +212,6 @@ def plot_mean_vs_p99(df, gpu_type, metric="itl", title=None, p90=True, paper=Fal
     plt.tight_layout()
 
     return fig
-
 
 # COMPARISON PLOTS ----------------------------------------------------
 def plot_run_variance(seqlen_df, concurrency_df, gpu_type, stds=1, osl=512, paper=False):
@@ -433,16 +432,6 @@ def plot_kv_saturation_comparison(a100_df, v100_df, title=None, paper=False):
         ax_left.axvspan(sat_c, df['max_concurrency'].max(),
                         alpha=0.07, color='#E85C4C', zorder=0)
 
-        thp_min = df['output_throughput'].min()
-        thp_max = df['output_throughput'].max()
-        # ax_left.annotate(
-        #     f'KV cache\nsaturation\n$\\approx${sat_c}',
-        #     xy=(sat_c, ann_y),
-        #     xytext=(sat_c * 1.15, ann_y),
-        #     fontsize=7, color='grey', va='center',
-        #     arrowprops=dict(arrowstyle='->', color='grey', lw=1.0),
-        # )
-
         ax_left.set_xscale('log', base=2)
         ax_left.set_xticks([4, 8, 16, 32, 64, 128, 256, 512])
         ax_left.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
@@ -461,7 +450,6 @@ def plot_kv_saturation_comparison(a100_df, v100_df, title=None, paper=False):
     plt.tight_layout()
 
     return fig
-
 
 # DATASET COMPARISON PLOTS ----------------------------------------------------
 def plot_prompt_type_ttft(df, gpu_type, isl=512, osl=64, title=None, paper=False):
@@ -708,7 +696,6 @@ def plot_ttft_zero_mean(df, gpu_type, run_number=0, prompt_type=None,
     plt.tight_layout()
 
     return fig
-
 
 
 # A100 PLOTS ----------------------------------------------------
