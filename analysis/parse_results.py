@@ -16,9 +16,10 @@ def metadata_from_path(path: Path):
     for i, part in enumerate(parts):
         if part in ('a100', 'v100'):
             gpu_type = part
-            # find experiment type from path
+            # find experiment & model name from path
             if i >= 2:
                 experiment = parts[i-2]
+                model_name = parts[i-1]
             # expect tp after gpu_type
             if i + 1 < len(parts) and parts[i+1].startswith('tp'):
                 try:
@@ -31,6 +32,7 @@ def metadata_from_path(path: Path):
             break
     return {
         'experiment':   experiment,
+        'model_name':   model_name,
         'gpu_type':     gpu_type,
         'tp':           tp,
         'interconnect': interconnect,
@@ -152,7 +154,7 @@ def average_results(results_csv_path: Path):
     # columns that identify a configuration
     possible_group_cols = [
         'max_concurrency',
-        'model_id', 
+        'model_name', 
         'tokenizer_id', 
         'backend', 
         'endpoint_type', 
@@ -187,7 +189,7 @@ def average_results(results_csv_path: Path):
     return averaged
 
 if __name__ == "__main__":
-    results_dir = Path('./resultscopy')
+    results_dir = Path('./results')
 
     # build missing csvs
     build_summary_csvs(results_dir)

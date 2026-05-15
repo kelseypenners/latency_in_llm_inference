@@ -37,11 +37,9 @@ def estimate_max_sequences(cache_size, context_size, nlayers, nheads, head_dim):
 def compute_derived_metrics(df):
     """ compute derived communication metrics by comparing multi-GPU configs to TP=1 baseline """
 
-    all_derived = []
-
     baseline = (
         df[df['tp'] == 1]
-        .groupby(['gpu_type', 'model_id', 'max_concurrency'])
+        .groupby(['gpu_type', 'model_name', 'max_concurrency'])
         .agg({
             'mean_itl_ms': 'mean',
             'output_throughput': 'mean',
@@ -62,7 +60,7 @@ def compute_derived_metrics(df):
 
     merged = configs.merge(
         baseline,
-        on=['max_concurrency', 'model_id', 'gpu_type'],
+        on=['max_concurrency', 'model_name', 'gpu_type'],
         how='inner'
     )
 
@@ -82,7 +80,7 @@ def compute_derived_metrics(df):
 
 if __name__ == "__main__":
 
-    results_dir = "./resultscopy/"
+    results_dir = "./results/"
 
     # load sequence length sweep data
     seqlen_df = pd.read_csv(f'{results_dir}seqlen-sweep/averaged_seqlen_sweep_results.csv')
@@ -108,7 +106,7 @@ if __name__ == "__main__":
 
     derived = compute_derived_metrics(concurrency_df)
 
-    out_path = './resultscopy/concurrency-sweep/derived_metrics.csv'
+    out_path = './results/concurrency-sweep/derived_metrics.csv'
     derived.to_csv(out_path, index=False)
     print(f"saved derived_metrics.csv ({len(derived)} rows)")
 
