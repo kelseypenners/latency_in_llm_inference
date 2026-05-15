@@ -263,7 +263,7 @@ power_log="${run_dir}/gpu_power.csv"
 nvidia-smi \
   --query-gpu=timestamp,index,power.draw \
   --format=csv,noheader,nounits \
-  -l 5 > "$power_log" &
+  -l 5 >> "$power_log" &
 POWER_LOG_PID=$!
 
 stop_power_log() {
