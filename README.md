@@ -78,7 +78,7 @@ There are three transport configurations for multi-GPU runs:
 | p2p_disabled     | `NCCL_P2P_DISABLE=1`                         | SHM            |
 | network_socket   | `NCCL_P2P_DISABLE=1` + `NCCL_SHM_DISABLE=1` | TCP socket     |
 
-Transport can be verified by inspect NCCL debug logs. Look for `P2P/CUMEM`, `SHM/direct/direct`, `NET/Socket/0`, etc..
+Transport can be verified by inspect NCCL debug logs by looking for `P2P/CUMEM`, `SHM/direct/direct`, `NET/Socket/0`, etc..
 
 ---
 
