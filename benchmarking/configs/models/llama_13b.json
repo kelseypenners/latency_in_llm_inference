@@ -1,4 +1,5 @@
 {
     "model_name": "llama-2-13b",
-    "model": "../Llama-2-13B"
+    "model": "../Llama-2-13B",
+    "gpu_mem": 0.9
 }
