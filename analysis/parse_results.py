@@ -155,7 +155,6 @@ def average_results(results_csv_path: Path):
     possible_group_cols = [
         'max_concurrency',
         'model_name', 
-        'tokenizer_id', 
         'backend', 
         'endpoint_type', 
         'gpu_type',
