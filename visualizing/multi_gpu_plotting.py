@@ -155,7 +155,6 @@ def plot_metric_vs_concurrency(
     plt.tight_layout()
     return fig
 
-
 def plot_throughput_efficiency(
         series, df, title,
         subtitle_info=None, 
@@ -228,7 +227,6 @@ def plot_speedup_all(
     plt.tight_layout()
     return fig
     
-
 def plot_normalized_throughput(
         series, df, title,
         subtitle_info=None, 
@@ -238,9 +236,15 @@ def plot_normalized_throughput(
 
     for s in series:
         plot_df = filter_df(df, **s['filters']).sort_values("max_concurrency")
+
+        x_vals = plot_df['max_concurrency'] / plot_df["tp"]
+        y_vals = plot_df['output_throughput'] / plot_df["tp"]
+
+        mask = (x_vals >= 4) & (x_vals<=512)
+
         ax.plot(
-            plot_df['max_concurrency'] / plot_df["tp"], 
-            plot_df['output_throughput'] / plot_df["tp"], 
+            x_vals[mask], 
+            y_vals[mask], 
             marker=s["marker"], label=s["label"], 
             markersize=2, color=s["color"])
  
@@ -261,7 +265,8 @@ def plot_normalized_throughput(
 # TP SCALING
 # --------------------------------------------------------------------------
 
-#%% A100 TP scaling
+#%% 
+# A100 TP scaling (primary model)
 
 sub_a100 = dict(gpu='shy-fec (A100s)', 
            model='Llama-3.1-8B', 
@@ -315,7 +320,63 @@ fig_a100_thp_normalized = plot_normalized_throughput(
 
 fig = plot_speedup_all(a100_tp, derived, 'Speedup Across TP Degree (A100)')
 
-#%% V100 TP scaling - 8b model
+#%% 
+# A100 TP scaling (13b model)
+
+sub_a100 = dict(gpu='shy-fec (A100s)', 
+           model='Llama-2-13B', 
+           config='ISL/OSL = 512/512')
+a100_tp = build_tp_series('a100', 'llama-2-13b')
+
+
+fig_itl = plot_metric_vs_concurrency(
+    a100_tp, data,
+    metric="mean_itl_ms",
+    ylabel="ITL (ms)",
+    title="ITL Across Tensor Parallelism Configs",
+    subtitle_info=sub_a100
+)
+fig_thp = plot_metric_vs_concurrency(
+    a100_tp, data,
+    metric="output_throughput",
+    ylabel="Output Throughput (tokens/s)",
+    title="Output Throughput Across TP Configs",
+    subtitle_info=sub_a100
+)
+fig_ttft = plot_metric_vs_concurrency(
+    a100_tp, data,
+    metric="mean_ttft_ms",
+    ylabel="TTFT",
+    title="TTFT Across TP Configs",
+    log_scale=False,
+    subtitle_info=sub_a100
+)
+fig_e2el = plot_metric_vs_concurrency(
+    a100_tp, data,
+    metric="mean_e2el_ms",
+    ylabel="E2EL(ms)",
+    title="E2EL Across Tensor Parallelism Configs",
+    subtitle_info=sub_a100
+)
+
+fig = plot_throughput_efficiency(
+    a100_tp,
+    derived,
+    title="Throughput Efficiency Across TP Degrees (A100)",
+    subtitle_info=sub_a100
+)
+
+fig_a100_thp_normalized = plot_normalized_throughput(
+    a100_tp, data,
+    title="Shy-fec (A100s): Per-GPU Output Throughput",
+    subtitle_info=sub_a100,
+    paper=True,
+)
+
+fig = plot_speedup_all(a100_tp, derived, 'Speedup Across TP Degree (A100)')
+
+#%% 
+# V100 TP scaling(primary model)
 
 sub_v100 = dict(gpu='funnotch (V100s)', 
            model='Llama-3.1-8B', 
@@ -369,7 +430,8 @@ fig_v100_thp_normalized = plot_normalized_throughput(
 
 fig = plot_speedup_all(v100_tp, derived, 'Speedup Across TP Degree (V100)')
 
-#%% V100 TP scaling with llama-3.2-1B 
+#%%
+# V100 TP scaling (1b model) 
 
 sub_v100_1b = dict(gpu='funnotch (V100s)', 
            model='Llama-3.2-1B', 
@@ -422,12 +484,67 @@ fig_v100_thp_normalized = plot_normalized_throughput(
 
 fig = plot_speedup_all(v100_tp_1b, derived, 'Speedup Across TP Degree (V100)')
 
+#%%
+# V100 TP scaling (13b model) 
+
+sub_v100_13b = dict(gpu='funnotch (V100s)', 
+           model='Llama-2-13B', 
+           config='ISL/OSL = 512/512')
+v100_tp_13b = build_tp_series('v100', 'llama-2-13b')
+
+fig_itl = plot_metric_vs_concurrency(
+    v100_tp_13b, data,
+    metric="mean_itl_ms",
+    ylabel="ITL (ms)",
+    title="ITL Across Tensor Parallelism Configs",
+    subtitle_info=sub_v100_13b
+)
+fig_thp = plot_metric_vs_concurrency(
+    v100_tp_13b, data,
+    metric="output_throughput",
+    ylabel="Output Throughput (tokens/s)",
+    title="Output Throughput Across TP Configs",
+    subtitle_info=sub_v100_13b
+)
+fig_ttft = plot_metric_vs_concurrency(
+    v100_tp_13b, data,
+    metric="mean_ttft_ms",
+    ylabel="TTFT",
+    title="TTFT Across TP Configs",
+    log_scale=False,
+    subtitle_info=sub_v100_13b
+)
+fig_e2el = plot_metric_vs_concurrency(
+    v100_tp_13b, data,
+    metric="mean_e2el_ms",
+    ylabel="E2EL(ms)",
+    title="E2EL Across Tensor Parallelism Configs",
+    subtitle_info=sub_v100_13b
+)
+
+fig = plot_throughput_efficiency(
+    v100_tp_13b,
+    derived,
+    title="Throughput Efficiency Across TP Degrees (V100)",
+    subtitle_info=sub_v100_13b
+)
+
+fig_v100_thp_normalized = plot_normalized_throughput(
+    v100_tp_13b, data,
+    title="Funnotch (V100s): Per-GPU Output Throughput",
+    subtitle_info=sub_v100_13b,
+    paper=True,
+)
+
+fig = plot_speedup_all(v100_tp_13b, derived, 'Speedup Across TP Degree (V100)')
+
 
 # --------------------------------------------------------------------------
 # INTERCONNECT COMPARISON
 # --------------------------------------------------------------------------
 
-#%% A100 interconnect comparison
+#%% 
+# A100 interconnect comparison
 
 a100_interconnect = build_interconnect_series('a100', 'llama-3.1-8b')
 
@@ -479,7 +596,61 @@ fig_a100_thp_normalized = plot_normalized_throughput(
 
 fig = plot_speedup_all(a100_interconnect, derived, 'Speedup Across Interconnects (A100)')
 
-#%% V100 interconnect comparison
+#%% 
+# A100 interconnect comparison tp4
+
+a100_interconnect_tp4 = build_interconnect_series('a100', 'llama-3.1-8b', tp=4)
+
+fig_thp = plot_metric_vs_concurrency(
+    a100_interconnect_tp4 , data,
+    metric="output_throughput",
+    ylabel="Output Throughput (tokens/s)",
+    title="Output Throughput Across Interconnects",
+    subtitle_info=sub_a100,
+)
+
+fig_itl = plot_metric_vs_concurrency(
+    a100_interconnect_tp4 , data,
+    metric="mean_itl_ms",
+    ylabel="ITL (ms)",
+    title="ITL Across Interconnects",
+    subtitle_info=sub_a100,
+)
+
+fig_e2el = plot_metric_vs_concurrency(
+    a100_interconnect_tp4 , data,
+    metric="mean_e2el_ms",
+    ylabel="E2E Latency (ms)",
+    title="E2EL Across Interconnects",
+    subtitle_info=sub_a100,
+)
+
+fig_ttft = plot_metric_vs_concurrency(
+    a100_interconnect_tp4 , data,
+    metric="mean_ttft_ms",
+    ylabel="TTFT",
+    title="TTFT Across Interconnects",
+    subtitle_info=sub_a100,
+)
+
+fig = plot_throughput_efficiency(
+    a100_interconnect_tp4 ,
+    derived,
+    title="Throughput Efficiency Across Interconnects (A100)",
+    subtitle_info=sub_a100
+)
+
+fig_a100_thp_normalized = plot_normalized_throughput(
+    a100_interconnect_tp4, data,
+    title="Shy-fec (A100s): Per-GPU Output Throughput",
+    subtitle_info=sub_a100,
+    paper=True,
+)
+
+fig = plot_speedup_all(a100_interconnect_tp4 , derived, 'Speedup Across Interconnects (A100)')
+
+#%% 
+# V100 interconnect comparison
 
 v100_interconnect = build_interconnect_series('v100', 'llama-3.1-8b')
 
@@ -532,7 +703,8 @@ fig_v100_thp_normalized = plot_normalized_throughput(
 fig = plot_speedup_all(v100_interconnect, derived, 'Speedup Across Interconnects (V100)')
 
 
-#%% V100 interconnect comparison tp=4
+#%% 
+# V100 interconnect comparison tp=4
 
 v100_interconnect_tp4 = build_interconnect_series('v100', 'llama-3.1-8b', tp=4)
 
