@@ -6,11 +6,11 @@ set -eu
 # paths to nccl-tests and results
 NCCL_TESTS="../../nccl-tests/build/all_reduce_perf"
 RESULTS_DIR="../results/interconnect_characterization"
+P2P_TESTS="../../cuda-samples/Samples/5_Domain_Specific/p2pBandwidthLatencyTest/p2pBandwidthLatencyTest"
 
 #-----------------------------------------------
 # helpers
 #-----------------------------------------------
-
 usage() {
     cat <<EOF
 
@@ -30,13 +30,12 @@ EOF
     exit 0
 }
 
-# exit withe error
+# exit with error
 die() { echo "error: $*" >&2; exit 1; }
 
 #-----------------------------------------------
 # parse and validate args
 #-----------------------------------------------
-
 gpu_ids=""
 tp=""
 server=""
@@ -59,29 +58,26 @@ done
 [[ -z "$tp"      ]] && die "missing required: --tp"
 [[ -z "$server"  ]] && die "missing required: --server"
 [[ ! -f "$NCCL_TESTS" ]] && die "nccl-tests binary not found: $NCCL_TESTS"
+[[ ! -f "$P2P_TESTS" ]] && die "p2pBandwidthLatencyTest binary not found: $P2P_TESTS"
 
-#-----------------------------------------------
-# min and max message calculation
-#-----------------------------------------------
 
+# min / max message calculation (based on smallest / largest model size)
 DTYPE_BYTES=2
 
 # min message size (1B hidden dim = 2048)
 MIN_BYTES=$(( 1 * 1 * 2048 * DTYPE_BYTES ))
 
 # max message size (13B hidden dim = 5120)
-MAX_BYTES=$(( 2048 * 5120 * DTYPE_BYTES ))
+MAX_BYTES=$(( 2048 * 5120 * DTYPE_BYTES))
 
-#-----------------------------------------------
-# make outdir
-#-----------------------------------------------
-
+# make outdir and file labels
 mkdir -p "$RESULTS_DIR"
 timestamp=$(date +%Y%m%d_%H%M)
 run_label="${server}_tp${tp}_${timestamp}"
+p2p_label="${server}_${timestamp}"
 
 #-----------------------------------------------
-# run nccl tests helper function
+# run nccl & p2p tests!
 #-----------------------------------------------
 run_nccl_test() {
     local outfile="$1"
@@ -102,15 +98,23 @@ run_nccl_test() {
 
 }
 
-#-----------------------------------------------
-# three transport configs
-#-----------------------------------------------
+run_p2p_test() {
+    local outfile="$1"
+
+    "$P2P_TESTS" 2>&1 | tee "$outfile"
+
+    echo "saved $outfile"
+    echo ""
+}
 
 echo ""
 echo "========================================"
 echo "server=$server | gpu_ids=$gpu_ids | tp=$tp"
 echo "range: $MIN_BYTES - $MAX_BYTES bytes"
 echo "========================================"
+
+run_p2p_test \
+    "${RESULTS_DIR}/${p2p_label}_p2p_matrix.txt"
 
 # default config: NCCL chooses best path
 run_nccl_test \
@@ -129,10 +133,10 @@ run_nccl_test \
 #-----------------------------------------------
 # print summary
 #-----------------------------------------------
-
 echo ""
 echo "done! results in $RESULTS_DIR:"
 echo "    ${run_label}_default.txt"
 echo "    ${run_label}_shm.txt"
 echo "    ${run_label}_socket.txt"
+echo "    ${p2p_label}_p2p_matrix.txt"
 echo "================================================================================"
