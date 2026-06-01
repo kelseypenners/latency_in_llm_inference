@@ -61,12 +61,10 @@ done
 [[ ! -f "$P2P_TESTS" ]] && die "p2pBandwidthLatencyTest binary not found: $P2P_TESTS"
 
 
-# min / max message calculation (based on smallest / largest model size)
+# min / max message calculation
 DTYPE_BYTES=2
-
 # min message size (1B hidden dim = 2048)
 MIN_BYTES=$(( 1 * 1 * 2048 * DTYPE_BYTES ))
-
 # max message size (13B hidden dim = 5120)
 MAX_BYTES=$(( 2048 * 5120 * DTYPE_BYTES))
 
