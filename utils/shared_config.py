@@ -3,6 +3,7 @@ import numpy as np
 # model configs
 MODELS = {
     "llama_1b": {
+        "model_name": "llama-3.2-1b",
         "num_layers": 16,
         "hidden_size": 2048,
         "num_attention_heads": 32,
@@ -10,6 +11,7 @@ MODELS = {
         "num_model_params_B": 1,
     },
     "llama_8b": {
+        "model_name": "llama-3.1-8b",
         "num_layers": 32,
         "hidden_size": 4096,
         "num_attention_heads": 32,
@@ -17,6 +19,7 @@ MODELS = {
         "num_model_params_B": 8,
     },
     "llama_13b": {
+        "model_name": "llama-2-13b",
         "num_layers": 40,
         "hidden_size": 5120,
         "num_attention_heads": 40,
