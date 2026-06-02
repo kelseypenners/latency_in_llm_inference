@@ -259,11 +259,11 @@ echo "$merged" | jq \
 
 power_log="${run_dir}/gpu_power.csv"
 
-# log every 5 seconds
+# measure power at 25 hz
 nvidia-smi \
   --query-gpu=timestamp,index,power.draw \
   --format=csv,noheader,nounits \
-  -l 5 >> "$power_log" &
+  -lms 40 >> "$power_log" &
 POWER_LOG_PID=$!
 
 stop_power_log() {
