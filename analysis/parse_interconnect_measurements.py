@@ -41,7 +41,13 @@ def metadata_from_filename(path: Path):
         meta["server"] = parts[0]
         meta["tp"] = int(parts[1].replace("tp", ""))
         meta["timestamp"] = parts[2] + "_" + parts[3]
-        meta["interconnect"] = parts[4]
+        interconnect = parts[4]
+        if interconnect == "default":
+            meta["interconnect"] = interconnect
+        if interconnect == "shm":
+            meta["interconnect"] = "p2p_disabled" 
+        elif interconnect == "socket":
+            meta["interconnect"] = "network_socket"
 
     return meta
 
@@ -136,7 +142,7 @@ def parse_nccltest_output(path: Path):
         # parse performance metrics rows
         match = nccl_data_pattern.match(line)
         if match:
-            sizes.append(int(match.group(1)))       # size (bytes)
+            sizes.append(int(match.group(1)))         # size (bytes)
             latencies.append(float(match.group(3)))   # time (us)
             algbw.append(float(match.group(4)))       # algbw (GB/s)
             busbw.append(float(match.group(5)))       # busbw (GB/s)
