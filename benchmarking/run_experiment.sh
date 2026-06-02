@@ -257,13 +257,20 @@ echo "$merged" | jq \
 # GPU power & NCCL logging
 #-----------------------------------------------
 
+# NCCL logging
+if [[ -n "$nccl_debug" ]]; then
+    nccl_env+=(NCCL_DEBUG=$nccl_debug)
+    nccl_env+=(NCCL_DEBUG_FILE="${run_dir}/nccl_debug_%h_%p.log")
+fi
+
 power_log="${run_dir}/gpu_power.csv"
+echo "timestamp,index,power.draw,utilization.gpu,utilization.memory,memory.used,memory.total" > "$power_log"
 
 # measure power at 25 hz
 nvidia-smi \
-  --query-gpu=timestamp,index,power.draw \
+  --query-gpu=timestamp,index,power.draw,utilization.gpu,utilization.memory,memory.used,memory.total \
   --format=csv,noheader,nounits \
-  -lms 40 >> "$power_log" &
+  -lms 50 >> "$power_log" &
 POWER_LOG_PID=$!
 
 stop_power_log() {
@@ -275,12 +282,6 @@ stop_power_log() {
     fi
 }
 trap stop_power_log EXIT
-
-# NCCL logging
-if [[ -n "$nccl_debug" ]]; then
-    nccl_env+=(NCCL_DEBUG=$nccl_debug)
-    nccl_env+=(NCCL_DEBUG_FILE="${run_dir}/nccl_debug_%h_%p.log")
-fi
 
 #-----------------------------------------------
 # run sweep
