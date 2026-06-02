@@ -1,0 +1,19 @@
+name: Sync to TU/e GitLab
+
+on:
+  push:
+    branches:
+      - '*'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to TU/e GitLab
+        run: |
+          git push --force --prune https://${{ github.actor }}:${{ secrets.GITLAB_PASSWORD }}@gitlab.tue.nl/k.penners/latency_in_llm_inference.git refs/remotes/origin/*:refs/heads/*
