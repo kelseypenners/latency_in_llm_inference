@@ -266,7 +266,7 @@ fi
 power_log="${run_dir}/gpu_power.csv"
 echo "timestamp,index,power.draw,utilization.gpu,utilization.memory,memory.used,memory.total" > "$power_log"
 
-# measure power at 25 hz
+# measure power at 20 hz
 nvidia-smi \
   --query-gpu=timestamp,index,power.draw,utilization.gpu,utilization.memory,memory.used,memory.total \
   --format=csv,noheader,nounits \
