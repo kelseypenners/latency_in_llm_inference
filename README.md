@@ -1,4 +1,4 @@
-# LLM Inference Benchmarking
+# Latency in LLM Inference
 
 Thesis repo for benchmarking LLM inference performance across single and multi-GPU configurations. The main question is how inter-GPU communication latency (NVLink vs PCIe vs network socket) affects throughput, TTFT, ITL, and other performance metrics when an LLM is distributed across several devices. 
 
@@ -24,7 +24,7 @@ archive/            old scripts and archived data
 - vLLM 0.11.2
 - Python: *pandas, numpy, matplotlib, seaborn, scikit-learn*
 - *jq* for config merging in shell script
-- r`equirements.txt` holds actual versions used
+- `requirements.txt` holds actual versions used
 
 ---
 
