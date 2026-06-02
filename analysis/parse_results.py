@@ -129,6 +129,19 @@ def load_results(experiment_dir: Path):
             metadata = metadata_from_path(summary_csv)
             for k, v in metadata.items():
                 df[k] = v
+            # config path to store gpu ids
+            config_path = summary_csv.parent.parent / "config_merged.json"
+
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+
+                gpu_ids = config.get("gpu_ids")
+
+                # add gpu_ids
+                if gpu_ids is not None:
+                    df["gpu_ids"] = gpu_ids
+
             all_dfs.append(df)
         except Exception as e:
             print(f"  skipping {summary_csv}: {e}")
