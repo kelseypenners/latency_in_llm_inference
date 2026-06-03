@@ -71,18 +71,22 @@ def series_entry(label, color, linestyle='-', marker='o', **filters):
         "marker": marker,
     }
 
-def build_tp_series(gpu_type, model_name):
+def build_tp_series(gpu_type, model_name, interconnect='default'):
     """ TP=1,2,4 series using default interconnect """
     series = []
     for tp in [1,2,4]:
+        if tp ==1:
+            temp = interconnect
+            interconnect = "default"
         series.append(series_entry(
             label=f"TP={tp}",
             color=TP_COLORS[tp],
             gpu_type=gpu_type,
             model_name=model_name,
-            interconnect='default',
+            interconnect=interconnect,
             tp=tp
         ))
+        interconnect = temp
     return series
 
 def build_interconnect_series(gpu_type, model_name, tp=2):
