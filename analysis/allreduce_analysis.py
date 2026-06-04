@@ -95,6 +95,70 @@ def plot_message_size_vs_concurrency(models=MODELS):
     plt.tight_layout()
     return fig
 
+
+def plot_allreduce_lat_vs_message_size(df, server="shy-fec", tp_degrees=[2, 4], interconnects=INTERCONNECTS):
+    """ plot NCCL AllReduce latency against message size for different interconnects """
+    fig, ax = plt.subplots(figsize=(4, 3))
+    
+    # min and max decode message sizes we've seen so far
+    min_size = 4096
+    max_size = 20971520
+
+    # map tp degrees to linestyles
+    tp_styles = {
+        2: {'linestyle': '-', 'marker': 'o', 'label_suffix': '(TP=2)'},
+        4: {'linestyle': '--', 'marker': 'o', 'label_suffix': '(TP=4)'}
+    }
+
+    for tp in tp_degrees:
+        style = tp_styles.get(tp, {'linestyle': '-', 'marker': '.', 'label_suffix': f'(TP={tp})'})
+        
+        for name, cfg in interconnects.items():
+
+            filtered_df = filter_df(df, interconnect=name, tp=tp, server=server)
+            if filtered_df.empty:
+                continue
+                
+            row = filtered_df.iloc[0]
+            sizes = np.array(json.loads(row['nccl_message_sizes']))
+            latencies = np.array(json.loads(row['nccl_latency']))
+
+            mask = (sizes >= min_size) & (sizes <= max_size)
+            if not np.any(mask):
+                continue
+                
+            sizes_filtered = sizes[mask]
+            latencies_filtered = latencies[mask] / 1000 # to milliseconds
+
+            display_name = cfg.get('label', None)
+            if display_name == None:
+                display_name  = cfg.get('label_a100', name)
+            display_name = f"{display_name} {style['label_suffix']}"
+            
+            ax.plot(
+                sizes_filtered, 
+                latencies_filtered, 
+                label=display_name, 
+                color=cfg['color'], 
+                linestyle=style['linestyle'],
+                marker=style['marker'], 
+                markersize=3.5
+            )
+
+    ax.set_xscale('log', base=2)
+    ax.set_yscale('log', base=2)
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(
+        lambda x, _: f'{x/1024:.0f} KB' if x < 1024*1024 else f'{x/(1024*1024):.0f} MB'
+    ))
+    ax.set_xlabel('AllReduce Message Size (Bytes)')
+    ax.set_ylabel('Latency (ms)')
+    ax.set_title(f'NCCL AllReduce Latency vs Message Size on {server}', pad=10)
+    ax.legend(fontsize=7, loc='upper left')
+    ax.grid(True, which="both", alpha=0.3)
+    
+    plt.tight_layout()
+    return fig
+
 def plot_total_comm_overhead_vs_concurrency(df, server, model_name, tp=2, models=MODELS, interconnects=INTERCONNECTS):
     """ total communication overhead per decode step = n_allreduce * allreduce_latency """
 
@@ -169,6 +233,17 @@ if __name__ == "__main__":
     a100_interconnect_series = build_interconnect_series(gpu_type='a100', model_name="llama-3.1-8b", tp=2)
     a100_interconnect_series = [s for s in a100_interconnect_series if s['filters'].get('tp', 1) > 1]
 
+    a100_tp_8b = build_tp_series('a100', 'llama-3.1-8b')
+    a100_tp_8b = [s for s in a100_tp_8b if s['filters'].get('tp', 1) > 1]
+    a100_tp_13b = build_tp_series('a100', 'llama-2-13b')
+    a100_tp_13b = [s for s in a100_tp_13b if s['filters'].get('tp', 1) > 1]
+
+    a100_tp_8b_p2pdisabled = build_tp_series('a100', 'llama-3.1-8b', interconnect = 'p2p_disabled')
+    a100_tp_8b_p2pdisabled = [s for s in a100_tp_8b_p2pdisabled if s['filters'].get('tp', 1) > 1]
+    a100_tp_13b_p2pdisabled = build_tp_series('a100', 'llama-2-13b', interconnect = 'p2p_disabled')
+    a100_tp_13b_p2pdisabled = [s for s in a100_tp_13b_p2pdisabled if s['filters'].get('tp', 1) > 1]
+
+
     sub_a100_8b = dict(gpu='shy-fec (A100s)', 
            model='Llama-3.1-8B', 
            config='ISL/OSL = 512/512')
@@ -184,6 +259,13 @@ if __name__ == "__main__":
     )
     plt.show()
 
+    fig2 = plot_expected_vs_observed_overhead(
+        series=a100_tp_8b + a100_tp_8b_p2pdisabled, 
+        df=combined_data,
+        title="Expected vs. Observed Communication Overhead",
+        subtitle_info=sub_a100_8b
+    )
+    plt.show()
   
 
     for model_name in MODELS:
@@ -192,4 +274,7 @@ if __name__ == "__main__":
 
 
 
+    # %%
+    fig_lat = plot_allreduce_lat_vs_message_size(nccl_df, server="shy-fec")
+    plt.show()
 # %%
