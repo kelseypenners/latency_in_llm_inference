@@ -34,12 +34,12 @@ CONCURRENCIES = np.array([4, 8, 16, 32, 64, 128, 192, 256, 320, 384, 448, 512,
 # interconnect configs
 INTERCONNECTS = {
     "default": {
-        "label_a100": "NVLink",
+        "label_a100": "NVLink P2P",
         "label_v100": "PCIe",
         "color": "#E85C4C",
     },
     "p2p_disabled": {
-        "label": "SHM",
+        "label": "PCIe SHM",
         "color": "#9B59B6",
     },
     "network_socket": {
