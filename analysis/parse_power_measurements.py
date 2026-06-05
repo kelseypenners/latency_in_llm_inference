@@ -75,6 +75,7 @@ def parse_run_power(run_row, power_df):
         return pd.Series(power_metrics)
 
     
+    # calculate total energy used for each gpu
     for gpu_id in gpu_ids:
 
         gpu_data = window_df[window_df['index'] == gpu_id]
