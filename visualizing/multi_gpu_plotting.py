@@ -25,57 +25,6 @@ derived = derived[derived['max_concurrency'] > 1]
 # plot functions
 # --------------------------------------------------------------------------
 
-def plot_metric_vs_concurrency(
-    series, df, metric, ylabel, title,
-    saturation_lines=None,
-    log_scale=False,
-    y_lim=None,
-    subtitle_info=None,
-    paper=False,
-):
-    """ line plot of metric vs concurrency for a list of series entries """
-    fig, ax = plt.subplots()
-
-    for s in series:
-        # sort values before plotting
-        plot_df = filter_df(df, **s['filters']).sort_values("max_concurrency")
-        ax.plot(
-            plot_df['max_concurrency'],
-            plot_df[metric],
-            marker=s['marker'],
-            markersize=2,
-            label=s["label"],
-            color=s["color"],
-            linestyle=s['linestyle'],
-        )
-
-    if y_lim != None:
-        ax.set_ylim(y_lim[0], y_lim[1])
-
-    if saturation_lines:
-        for x_val, _ in saturation_lines:
-            ax.axvline(x=x_val, color='grey', linewidth=0.9, linestyle=':')
-
-    if log_scale:
-        ax.set_yscale('log', base=2)
-        ticks_s = [0.1, 1, 10, 60]
-        ticks_ms = 1000 * np.array(ticks_s)
-        ax.set_yticks(ticks_ms)
-        ax.set_yticklabels([f"{t}s" for t in ticks_s])
- 
-    ax.set_title(title, pad=15)
-    ax.set_xlabel('Concurrency')
-    ax.set_ylabel(ylabel)
-    ax.set_xticks(plot_df['max_concurrency'])
-    ax.set_xscale('log', base=2)
-    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-    ax.grid(True, axis='y', alpha=0.3)
-    ax.legend(fontsize=7)
-    if subtitle_info and not paper:
-        subtitle(ax, **subtitle_info)
-    plt.tight_layout()
-    return fig
-
 def plot_throughput_efficiency(
         series, df, title,
         subtitle_info=None, 
@@ -294,6 +243,57 @@ fig_a100_thp_normalized = plot_normalized_throughput(
 )
 
 fig = plot_speedup_all(a100_tp_1b, derived, 'Speedup Across TP Degree (A100)')
+
+#%% 
+# A100 TP scaling when P2P Disabled (8b model)
+
+a100_tp_8b_p2pdisabled = build_tp_series('a100', 'llama-3.1-8b', interconnect = 'p2p_disabled')
+
+fig_itl = plot_metric_vs_concurrency(
+    a100_tp_8b_p2pdisabled, data,
+    metric="mean_itl_ms",
+    ylabel="ITL (ms)",
+    title="ITL Across Tensor Parallelism Configs",
+    subtitle_info=sub_a100_8b
+)
+fig_thp = plot_metric_vs_concurrency(
+    a100_tp_8b_p2pdisabled, data,
+    metric="output_throughput",
+    ylabel="Output Throughput (tokens/s)",
+    title="Output Throughput Across TP Configs",
+    subtitle_info=sub_a100_8b
+)
+fig_ttft = plot_metric_vs_concurrency(
+    a100_tp_8b_p2pdisabled, data,
+    metric="mean_ttft_ms",
+    ylabel="TTFT",
+    title="TTFT Across TP Configs",
+    log_scale=False,
+    subtitle_info=sub_a100_8b
+)
+fig_e2el = plot_metric_vs_concurrency(
+    a100_tp_8b_p2pdisabled, data,
+    metric="mean_e2el_ms",
+    ylabel="E2EL(ms)",
+    title="E2EL Across Tensor Parallelism Configs",
+    subtitle_info=sub_a100_8b
+)
+
+fig = plot_throughput_efficiency(
+    a100_tp_8b_p2pdisabled,
+    derived,
+    title="Throughput Efficiency Across TP Degrees (A100)",
+    subtitle_info=sub_a100_8b
+)
+
+fig_a100_thp_normalized = plot_normalized_throughput(
+    a100_tp_8b_p2pdisabled, data,
+    title="Primary Model with P2P Disabled: Throughput",
+    subtitle_info=sub_a100_8b,
+)
+
+fig = plot_speedup_all(a100_tp_8b_p2pdisabled, derived, 'Speedup Across TP Degree (A100)')
+
 #%% 
 # A100 TP scaling (13b model)
 
@@ -347,6 +347,59 @@ fig_a100_thp_normalized = plot_normalized_throughput(
 )
 
 fig = plot_speedup_all(a100_tp_13b, derived, 'Speedup Across TP Degree (A100)')
+
+#%% 
+# A100 TP scaling when P2P Disabled (13b model)
+
+sub_a100_13b = dict(gpu='shy-fec (A100s)', 
+           model='Llama-2-13B', 
+           config='ISL/OSL = 512/512')
+a100_tp_13b_p2pdisabled = build_tp_series('a100', 'llama-2-13b', interconnect = 'p2p_disabled')
+
+fig_itl = plot_metric_vs_concurrency(
+    a100_tp_13b_p2pdisabled, data,
+    metric="mean_itl_ms",
+    ylabel="ITL (ms)",
+    title="ITL Across Tensor Parallelism Configs",
+    subtitle_info=sub_a100_13b
+)
+fig_thp = plot_metric_vs_concurrency(
+    a100_tp_13b_p2pdisabled, data,
+    metric="output_throughput",
+    ylabel="Output Throughput (tokens/s)",
+    title="Output Throughput Across TP Configs",
+    subtitle_info=sub_a100_13b
+)
+fig_ttft = plot_metric_vs_concurrency(
+    a100_tp_13b_p2pdisabled, data,
+    metric="mean_ttft_ms",
+    ylabel="TTFT",
+    title="TTFT Across TP Configs",
+    log_scale=False,
+    subtitle_info=sub_a100_13b
+)
+fig_e2el = plot_metric_vs_concurrency(
+    a100_tp_13b_p2pdisabled, data,
+    metric="mean_e2el_ms",
+    ylabel="E2EL(ms)",
+    title="E2EL Across Tensor Parallelism Configs",
+    subtitle_info=sub_a100_13b
+)
+
+fig = plot_throughput_efficiency(
+    a100_tp_13b_p2pdisabled,
+    derived,
+    title="Throughput Efficiency Across TP Degrees (A100)",
+    subtitle_info=sub_a100_13b
+)
+
+fig_a100_thp_normalized = plot_normalized_throughput(
+    a100_tp_13b_p2pdisabled, data,
+    title="Larger Model with P2P Disabled: Throughput",
+    subtitle_info=sub_a100_13b,
+)
+
+fig = plot_speedup_all(a100_tp_13b_p2pdisabled, derived, 'Speedup Across TP Degree (A100)')
 
 #%% 
 # V100 TP scaling(primary model)
@@ -964,6 +1017,13 @@ fig = plot_throughput_efficiency(
     subtitle_info=sub_a100_8b
 )
 
+
+
+# %%
+
+a100_tp_13b_p2pdisabled = build_tp_series(gpu_type='a100', model_name="llama-2-13b", interconnect="p2p_disabled")
+
+fig = plot_normalized_throughput(a100_tp_13b_p2pdisabled, df=data, title="Larger Model with P2P Disabled")
 
 
 # %%

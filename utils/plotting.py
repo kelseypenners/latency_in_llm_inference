@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from pathlib import Path
 import matplotlib as mpl
 
@@ -73,3 +74,54 @@ def set_figure_style():
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.07,
     })
+
+def plot_metric_vs_concurrency(
+    series, df, metric, ylabel, title,
+    saturation_lines=None,
+    log_scale=False,
+    y_lim=None,
+    subtitle_info=None,
+    paper=False,
+):
+    """ line plot of metric vs concurrency for a list of series entries """
+    fig, ax = plt.subplots()
+
+    for s in series:
+        # sort values before plotting
+        plot_df = filter_df(df, **s['filters']).sort_values("max_concurrency")
+        ax.plot(
+            plot_df['max_concurrency'],
+            plot_df[metric],
+            marker=s['marker'],
+            markersize=2,
+            label=s["label"],
+            color=s["color"],
+            linestyle=s['linestyle'],
+        )
+
+    if y_lim != None:
+        ax.set_ylim(y_lim[0], y_lim[1])
+
+    if saturation_lines:
+        for x_val, _ in saturation_lines:
+            ax.axvline(x=x_val, color='grey', linewidth=0.9, linestyle=':')
+
+    if log_scale:
+        ax.set_yscale('log', base=2)
+        ticks_s = [0.1, 1, 10, 60]
+        ticks_ms = 1000 * np.array(ticks_s)
+        ax.set_yticks(ticks_ms)
+        ax.set_yticklabels([f"{t}s" for t in ticks_s])
+ 
+    ax.set_title(title, pad=15)
+    ax.set_xlabel('Concurrency')
+    ax.set_ylabel(ylabel)
+    ax.set_xticks(plot_df['max_concurrency'])
+    ax.set_xscale('log', base=2)
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.grid(True, axis='y', alpha=0.3)
+    ax.legend(fontsize=7)
+    if subtitle_info and not paper:
+        subtitle(ax, **subtitle_info)
+    plt.tight_layout()
+    return fig
