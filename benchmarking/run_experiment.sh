@@ -264,7 +264,10 @@ if [[ -n "$nccl_debug" ]]; then
 fi
 
 power_log="${run_dir}/gpu_power.csv"
-echo "timestamp,index,power.draw,utilization.gpu,utilization.memory,memory.used,memory.total" > "$power_log"
+
+if [ ! -s "$power_log" ]; then
+    echo "timestamp,index,power.draw,utilization.gpu,utilization.memory,memory.used,memory.total" > "$power_log"
+fi
 
 # measure power at 20 hz
 nvidia-smi \
