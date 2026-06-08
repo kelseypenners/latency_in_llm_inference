@@ -141,19 +141,26 @@ fi
 #-----------------------------------------------
 
 nccl_env=()
-nccl_comm=""
-
-if [[ "$tp" -gt 1 ]]; then
-    nccl_comm="default (best available)"
-    if [[ "$disable_p2p" == true ]]; then
-        # disable using NCCL_P2P_DISABLE
-        nccl_env+=(NCCL_P2P_DISABLE=1)
-        nccl_comm="SHM (P2P disabled)" 
-    fi
-    if [[ "$network_fallback" == true ]]; then
-        # disable using NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
-        nccl_env=(NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1)
-        nccl_comm="socket (P2P + SHM disabled)"
+nccl_comm="default (best available)"
+env_vars_active=false
+if [[ "$disable_p2p" == true ]]; then
+    # disable using NCCL_P2P_DISABLE
+    nccl_env+=(NCCL_P2P_DISABLE=1)
+    nccl_comm="SHM (P2P disabled)" 
+    env_vars_active=true
+fi
+if [[ "$network_fallback" == true ]]; then
+    # disable using NCCL_P2P_DISABLE and NCCL_SHM_DISABLE
+    nccl_env=(NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1)
+    nccl_comm="socket (P2P + SHM disabled)"
+    env_vars_active=true
+fi
+if [[ "$tp" -eq 1 ]]; then
+    # clarify no gpu to gpu comm in tp1, but allow for sanity checks
+    if [[ "$env_vars_active" == true ]]; then
+        nccl_comm="env vars set, but no gpu-to-gpu communication in this config"
+    else
+        nccl_comm=""
     fi
 fi
 
