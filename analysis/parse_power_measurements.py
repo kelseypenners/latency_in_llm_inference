@@ -70,11 +70,6 @@ def parse_run_power(run_row, power_df):
     window_df = window_df.sort_values(by=['index', 'timestamp'])
     num_samples = len(window_df)
 
-    # only calculate for sufficient number of samples
-    if num_samples < 1500:
-        return pd.Series(power_metrics)
-
-    
     # calculate total energy used for each gpu
     for gpu_id in gpu_ids:
 
