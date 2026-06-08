@@ -79,7 +79,7 @@ missing=()
 [[ -z "$gpu_ids" ]] && missing+=("--gpu-ids")
 [[ ${#missing[@]} -gt 0 ]] && die "missing required arguments: ${missing[*]}"
 
-[[ "$tp" -eq 1 ]] && interconnect="default"
+# [[ "$tp" -eq 1 ]] && interconnect="default"
 
 # read config files
 experiment_config="${CONFIGS_DIR}/experiments/${experiment}.json"
