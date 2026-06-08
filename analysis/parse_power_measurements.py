@@ -147,6 +147,7 @@ def find_run_power(run_row, cached_dirs):
             power_log_data.to_csv(power_log_path, index=False)
     else: 
         print(f"dir found({best_match_path.name}), but no gpu_power.csv found")
+        return None
 
     return power_log_data
 
