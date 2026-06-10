@@ -60,12 +60,18 @@ def build_slo_attainment_csv(df, output_path="slo_attainment.csv"):
             row[label] = capacity
         
         # find capacity based on both SLOs
-        row['capacity_responsive'] = min(
+        responsive_capacity = min(
             row.get('ttft_responsive_P95', 0) or 0, 
             row.get('itl_responsive_P95', 0) or 0)
-        row['capacity acceptable'] = min(
+        acceptable_capacity = min(
             row.get('ttft_acceptable_P95', 0) or 0, 
             row.get('itl_acceptable_P95', 0) or 0)
+        row['capacity_responsive'] = responsive_capacity
+        row['capacity_acceptable'] = acceptable_capacity
+
+        tp = row.get('tp', 1)
+        row['pergpu_capacity_responsive'] = int(responsive_capacity / tp)
+        row['pergpu_capacity_acceptable'] = int(acceptable_capacity / tp) 
         results.append(row)
 
     summary_df = pd.DataFrame(results)
@@ -81,23 +87,39 @@ if __name__ == "__main__":
 
     df = pd.read_csv(f"{results_dir}concurrency-sweep/averaged_concurrency_sweep_results.csv")
 
-    # a100_8b_default = build_tp_series('a100', 'llama-3.1-8b')
-    # a100_8b_p2pdisabled = build_tp_series('a100', 'llama-3.1-8b', 'p2p_disabled')
+    a100_8b_default = build_tp_series('a100', 'llama-3.1-8b')
+    a100_8b_p2pdisabled = build_tp_series('a100', 'llama-3.1-8b', 'p2p_disabled')
 
-    # a100_13b_default = build_tp_series('a100', 'llama-2-13b')
-    # a100_13b_p2pdisabled = build_tp_series('a100', 'llama-2-13b', 'p2p_disabled')
+    a100_13b_default = build_tp_series('a100', 'llama-2-13b')
+    a100_13b_p2pdisabled = build_tp_series('a100', 'llama-2-13b', 'p2p_disabled')
 
-    # fig = plot_metric_vs_concurrency(
-    #     a100_13b_p2pdisabled, df,
-    #     metric="median_itl_ms",
-    #     ylabel="ITL",
-    #     title="ITL Across TP Configs",
-    #     log_scale=False,
-    #     y_lim=[0, 500]
-    # )
+    slo_cols = {
+        'responsive': 'capacity_responsive', 'acceptable': 'capacity_acceptable'
+    }
+    slo_styles = {
+        'responsive': ('*', 60, '--'), 'acceptable': ('D', 30, ':'),
+    }
 
     slo_summary = build_slo_attainment_csv(df, output_path=f"{results_dir}concurrency-sweep/slo_attainment.csv")
 
+    fig = plot_metric_vs_concurrency(
+        a100_13b_default, df,
+        metric="median_itl_ms",
+        ylabel="ITL",
+        title="ITL Across TP Configs",
+        # log_scale=False,
+        slo_df=slo_summary, slo_cols=slo_cols, slo_styles=slo_styles,
+
+    )
+    slo_cols = {
+        'responsive': 'pergpu_capacity_responsive', 'acceptable': 'pergpu_capacity_acceptable'
+    }
+
+    fig_a100_thp_normalized = plot_normalized_throughput(
+        a100_8b_default, df,
+        title="Primary Model: Normalized Output Throughput",
+        slo_df=slo_summary, slo_cols=slo_cols, slo_styles=slo_styles,
+    )
 # summary_df = pd.DataFrame(results)
 # print(summary_df.to_string(index=False))
 # pivot = summary_df.pivot(index="tp", columns="gpu", values="capacity")

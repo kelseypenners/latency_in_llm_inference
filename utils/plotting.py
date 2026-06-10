@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from pathlib import Path
 import matplotlib as mpl
+import numpy as np
+import pandas as pd
 
 import seaborn as sns
 
@@ -80,6 +82,7 @@ def plot_metric_vs_concurrency(
     saturation_lines=None,
     log_scale=False,
     y_lim=None,
+    slo_df=None, slo_cols=None, slo_styles=None,
     subtitle_info=None,
     paper=False,
 ):
@@ -99,6 +102,22 @@ def plot_metric_vs_concurrency(
             linestyle=s['linestyle'],
         )
 
+        if slo_df is not None:
+            slo_row = filter_df(slo_df, **s['filters'])
+
+            for slo_label, col, in slo_cols.items():
+                capacity = slo_row[col].item() if not slo_row.empty else np.nan
+                if pd.isna(capacity) or capacity == 0:
+                    continue
+                marker, size, linestyle = (slo_styles or {}).get(slo_label, ('|', 80, '--'))
+                
+                ax.axvline(x=capacity, color=s['color'], linewidth=0.8,
+                            linestyle=linestyle, alpha=0.6)
+                # get the metric value at that capacity by interpolating
+                y_val = np.interp(capacity, plot_df['max_concurrency'], plot_df[metric])
+                ax.scatter(capacity, y_val, color=s['color'], marker=marker,
+                            s=size, zorder=5)
+
     if y_lim != None:
         ax.set_ylim(y_lim[0], y_lim[1])
 
@@ -116,6 +135,57 @@ def plot_metric_vs_concurrency(
     ax.set_title(title, pad=15)
     ax.set_xlabel('Concurrency')
     ax.set_ylabel(ylabel)
+    ax.set_xticks(plot_df['max_concurrency'])
+    ax.set_xscale('log', base=2)
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.grid(True, axis='y', alpha=0.3)
+    ax.legend(fontsize=7)
+    if subtitle_info and not paper:
+        subtitle(ax, **subtitle_info)
+    plt.tight_layout()
+    return fig
+
+def plot_normalized_throughput(
+        series, df, title,
+        slo_df=None, slo_cols=None, slo_styles=None,
+        subtitle_info=None, 
+        paper=False):
+    
+    fig, ax = plt.subplots()
+
+    for s in series:
+        plot_df = filter_df(df, **s['filters']).sort_values("max_concurrency")
+
+        x_vals = plot_df['max_concurrency'] / plot_df["tp"]
+        y_vals = plot_df['output_throughput'] / plot_df["tp"]
+
+        mask = (x_vals >= 4) & (x_vals<=512)
+
+        ax.plot(
+            x_vals[mask], 
+            y_vals[mask], 
+            marker=s["marker"], label=s["label"], 
+            markersize=2, color=s["color"], linestyle=s["linestyle"])
+        
+        if slo_df is not None:
+            slo_row = filter_df(slo_df, **s['filters'])
+
+            for slo_label, col, in slo_cols.items():
+                capacity = slo_row[col].item() if not slo_row.empty else np.nan
+                if pd.isna(capacity) or capacity < 4:
+                    continue
+                    
+                marker, size, linestyle = (slo_styles or {}).get(slo_label, ('|', 80, '--'))
+                ax.axvline(x=capacity, color=s['color'], linewidth=0.8,
+                            linestyle=linestyle, alpha=0.6)
+                # get the metric value at that capacity by interpolating
+                y_val = np.interp(capacity, x_vals, y_vals)
+                ax.scatter(capacity, y_val, color=s['color'], marker=marker,
+                            s=size, zorder=5)
+ 
+    ax.set_title(title, pad=15)
+    ax.set_xlabel('Concurrency per GPU (requests)')
+    ax.set_ylabel('Throughput per GPU (token/s)')
     ax.set_xticks(plot_df['max_concurrency'])
     ax.set_xscale('log', base=2)
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
