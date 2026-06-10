@@ -96,7 +96,7 @@ if __name__ == "__main__":
     #     y_lim=[0, 500]
     # )
 
-    slo_summary = build_slo_attainment_csv(df)
+    slo_summary = build_slo_attainment_csv(df, output_path=f"{results_dir}concurrency-sweep/slo_attainment.csv")
 
 # summary_df = pd.DataFrame(results)
 # print(summary_df.to_string(index=False))
