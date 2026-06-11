@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime, timedelta
+import argparse
 
 def get_gpu_ids(gpu_ids_val):
     """ parse gpu_ids from results csv into list of ints """
@@ -26,7 +27,6 @@ def parse_run_power(run_row, power_df):
     if pd.isna(run_row.get('date')) or pd.isna(run_row.get('duration')) or power_df is None:
         return pd.Series(power_metrics)
 
-    
     end_time = datetime.strptime(str(run_row['date']).strip(), "%Y%m%d-%H%M%S")
     duration = float(run_row['duration'])
     start_time = end_time - timedelta(seconds=duration)
@@ -51,6 +51,7 @@ def parse_run_power(run_row, power_df):
         return pd.Series(power_metrics)
     
     # convert string timestamps to compatible datetime objects
+    power_df = power_df.copy()
     power_df['timestamp'] = pd.to_datetime(power_df['timestamp'].str.strip())
 
     # filter power log to run window and active GPUs
@@ -185,12 +186,35 @@ def build_power_csv(experiment_dir: Path, results_csv_path: Path):
 
     return all_data
 
+def main(args):
+    experiment_dir = Path(args.experiment_dir)
+    results_csv_path = Path(args.results_csv_path)
+
+    if not experiment_dir.exists():
+        raise FileNotFoundError(f"experiment dir not found: {experiment_dir}")
+
+    if not results_csv_path.exists():
+        raise FileNotFoundError(f"results CSV not found: {results_csv_path}")
+
+    df = build_power_csv(experiment_dir, results_csv_path)
+    print("done. rows:", len(df))
+
 
 if __name__ == "__main__":
 
-    results_dir = Path('./results')
-    sweep_dir = results_dir / 'concurrency-sweep'
-    results_csv_path = results_dir / 'concurrency-sweep/concurrency_sweep_results.csv'   
-    
-    # build power csv
-    df = build_power_csv(sweep_dir, results_csv_path)
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "experiment_dir",
+        type=str,
+        help="path to experiment folder"
+    )
+    parser.add_argument(
+        "results_csv_path",
+        type=str,
+        help="path to results CSV"
+    )
+
+    args = parser.parse_args()
+
+    main(args)
