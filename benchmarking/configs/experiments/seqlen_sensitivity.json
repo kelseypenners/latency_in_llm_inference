@@ -9,8 +9,8 @@
         {"random_input_len": 32, 
         "random_output_len": 2048, 
         "max-concurrency": 256,
-        "num-prompts": 2500}
+        "num-prompts": 1000}
     ],
-    "serve_cmd_extra": "--port 8000 --max-num-seqs 2048 --max-model-len 2048 --disable-custom-all-reduce",
+    "serve_cmd_extra": "--port 8000 --max-num-seqs 2048 --max-model-len 4096 --disable-custom-all-reduce",
     "dry_run": false
 }
