@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 import json
 import re
+import argparse
 
 DEVICE_MAP = {
     "7": 0,
@@ -244,9 +245,22 @@ def build_measurement_csv(results_dir: Path):
     df.to_csv(output_csv, index=False)
     print(f"saved {output_csv} ({len(df)} distinct test iters)")
     return df
-    
-if __name__ == "__main__":
-    results_dir = Path('./results/interconnect_characterization')
+
+def main(args):
+    results_dir = Path(args.results_dir)
 
     # build measurement csv with measurements from all test outputs
     df = build_measurement_csv(results_dir)
+    
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "results_dir",
+        type=str,
+        help="path to measurement data dir"
+    )
+
+    args = parser.parse_args()
+    main(args)
