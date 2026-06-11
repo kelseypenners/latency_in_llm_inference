@@ -197,7 +197,6 @@ def main(args):
         raise FileNotFoundError(f"results CSV not found: {results_csv_path}")
 
     df = build_power_csv(experiment_dir, results_csv_path)
-    print("done. rows:", len(df))
 
 
 if __name__ == "__main__":
