@@ -1,6 +1,7 @@
 #%%
 import numpy as np
 import pandas as pd
+import argparse
 
 from utils.shared_config import *
 from utils.plotting import *
@@ -14,8 +15,8 @@ SLOS = [
         ("ttft", "p95", 3000, "ttft_acceptable_P95"),
         ("itl", "median", 50, "itl_tight_P50"),
         ("itl", "median", 150, "itl_responsive_P50"),
-        ("itl", "p95", 150, "itl_responsive_P95"),
-        ("itl", "p95", 300, "itl_acceptable_P95"),
+        ("itl", "p95", 100, "itl_responsive_P95"),
+        ("itl", "p95", 250, "itl_acceptable_P95"),
     ]
 
 def find_slo_capacity(df, metric_col, threshold, concurrency_col='max_concurrency'):
@@ -79,54 +80,30 @@ def build_slo_attainment_csv(df, output_path="slo_attainment.csv"):
     print(f"saved SLO capacity table to {output_path}")
     return summary_df
 
-#%%
+def main(args):
+
+    results_csv_path = Path(args.results_csv)
+    if not results_csv_path.exists():
+            raise FileNotFoundError(f"results csv not found {results_csv_path}")
+
+    df = pd.read_csv(results_csv_path)
+
+    experiment_dir = results_csv_path.parent
+    out_path = experiment_dir / 'slo_attainment.csv'
+    
+    build_slo_attainment_csv(df, output_path=out_path)
+
+
 if __name__ == "__main__":
-    pass
-    #%%
-    results_dir = "../results/"
 
-    df = pd.read_csv(f"{results_dir}concurrency-sweep/averaged_concurrency_sweep_results.csv")
+    parser = argparse.ArgumentParser()
 
-    a100_8b_default = build_tp_series('a100', 'llama-3.1-8b')
-    a100_8b_p2pdisabled = build_tp_series('a100', 'llama-3.1-8b', 'p2p_disabled')
-
-    a100_13b_default = build_tp_series('a100', 'llama-2-13b')
-    a100_13b_p2pdisabled = build_tp_series('a100', 'llama-2-13b', 'p2p_disabled')
-
-    slo_cols = {
-        'responsive': 'capacity_responsive', 'acceptable': 'capacity_acceptable'
-    }
-    slo_styles = {
-        'responsive': ('*', 60, '--'), 'acceptable': ('D', 30, ':'),
-    }
-
-    slo_summary = build_slo_attainment_csv(df, output_path=f"{results_dir}concurrency-sweep/slo_attainment.csv")
-
-    fig = plot_metric_vs_concurrency(
-        a100_13b_default, df,
-        metric="median_itl_ms",
-        ylabel="ITL",
-        title="ITL Across TP Configs",
-        # log_scale=False,
-        slo_df=slo_summary, slo_cols=slo_cols, slo_styles=slo_styles,
-
+    parser.add_argument(
+        "results_csv",
+        type=str,
+        help="path to results csv"
     )
-    slo_cols = {
-        'responsive': 'pergpu_capacity_responsive', 'acceptable': 'pergpu_capacity_acceptable'
-    }
 
-    fig_a100_thp_normalized = plot_normalized_throughput(
-        a100_8b_default, df,
-        title="Primary Model: Normalized Output Throughput",
-        slo_df=slo_summary, slo_cols=slo_cols, slo_styles=slo_styles,
-    )
-# summary_df = pd.DataFrame(results)
-# print(summary_df.to_string(index=False))
-# pivot = summary_df.pivot(index="tp", columns="gpu", values="capacity")
+    args = parser.parse_args()
 
-# sns.heatmap(pivot, annot=True, fmt=".0f", cmap="viridis")
-# plt.title("SLO-Constrained Max Throughput")
-# plt.ylabel("Tensor Parallelism")
-# plt.xlabel("GPU Type")
-
-# %%
+    main(args)
