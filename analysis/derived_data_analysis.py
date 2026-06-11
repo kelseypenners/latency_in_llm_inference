@@ -1,18 +1,8 @@
 #%%
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+import argparse
+from pathlib import Path
 
-def compute_prefill_rate(df, gpu_type, osl=512):
-    data = df[(df['gpu_type'] == gpu_type) & 
-              (df['random_output_len'] == osl)]
-    
-    x = data['random_input_len'].values.reshape(-1,1)
-    y = data['mean_ttft_ms'].values
-
-    reg = LinearRegression().fit(x, y)
-
-    print(f'    Fixed OSL: {osl}')
-    print(f"    Prefill rate: {reg.coef_[0]:.4f} ms/token\n")
 
 def compute_derived_metrics(df):
     """ compute derived communication metrics by comparing multi-GPU configs to TP=1 baseline """
@@ -107,24 +97,33 @@ def compute_derived_metrics(df):
 
     return merged
 
-if __name__ == "__main__":
+def main(args):
 
-    results_dir = "./results/"
+    csv_path = Path(args.experiment_csv)
 
-    # load sequence length sweep data
-    seqlen_df = pd.read_csv(f'{results_dir}seqlen-sweep/averaged_seqlen_sweep_results.csv')
-    # load concurrency sweep data
-    concurrency_df = pd.read_csv(f'{results_dir}concurrency-sweep/averaged_concurrency_sweep_results.csv')
+    if not csv_path.exists():
+        raise FileNotFoundError(f"results csv not found: {csv_path}")
+    
+    df = pd.read_csv(csv_path)
 
-    # # prefill analysis
-    # for gpu_type in ['a100', 'v100']:
-    #     print(f"{gpu_type.upper()} ESTIMATES")
-    #     for osl in [128,256,512,1024,2048]:
-    #         compute_prefill_rate(seqlen_df, gpu_type=gpu_type, osl=osl)
-
-    derived = compute_derived_metrics(concurrency_df)
-
-    out_path = './results/concurrency-sweep/derived_metrics.csv'
+    derived = compute_derived_metrics(df)
+    
+    experiment_dir = csv_path.parent
+    out_path = experiment_dir / 'derived_metrics.csv'
     derived.to_csv(out_path, index=False)
     print(f"saved derived_metrics.csv ({len(derived)} rows)")
 
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "experiment_csv",
+        type=str,
+        help="path to experiment csv"
+    )
+
+    args = parser.parse_args()
+
+    main(args)
