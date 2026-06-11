@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from pathlib import Path
+import argparse
 
 
 def metadata_from_path(path: Path):
@@ -200,20 +201,42 @@ def average_results(results_csv_path: Path):
 
     return averaged
 
+
+def main(args):
+
+    exp_dir = Path(args.experiment_dir)
+
+    if not exp_dir.exists():
+        raise FileNotFoundError(f"experiment not found: {exp_dir}")
+
+    print(f"processing experiment: {exp_dir}")
+
+    # build missing summary csvs (from resumed runs)
+    build_summary_csvs(exp_dir)
+
+    df = load_results(exp_dir)
+
+    results_csv = exp_dir / (exp_dir.name.replace("-", "_") + "_results.csv")
+    if not results_csv.exists():
+        print("no results CSV found yet...")
+        return
+
+    average_results(results_csv)
+
+    
 if __name__ == "__main__":
-    results_dir = Path('./results')
 
-    # build missing csvs
-    build_summary_csvs(results_dir)
+    parser = argparse.ArgumentParser()
 
-    # load all summary csvs into an aggregated experiment csv
-    df = load_results(results_dir / 'seqlen-sweep')
-    df = load_results(results_dir / 'concurrency-sweep')
-    df = load_results(results_dir / 'dataset-comparison')
+    parser.add_argument(
+        "experiment_dir",
+        type=str,
+        help="path to experiment folder"
+    )
 
-    # average experiment results
-    df = average_results(results_dir / 'seqlen-sweep/seqlen_sweep_results.csv')
-    df = average_results(results_dir / 'concurrency-sweep/concurrency_sweep_results.csv')
+    args = parser.parse_args()
+
+    main(args)
 
 
 
