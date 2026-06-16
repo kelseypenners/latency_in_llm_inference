@@ -1,0 +1,11 @@
+{
+    "experiment": "latency_injection",
+    "bench_cmd_extra": "--backend openai --save-result --dataset-name random --random-input-len 512 --random-output-len 512 --metric-percentiles 75,90,95,99 --num-warmups 20 --ignore-eos --ready-check-timeout-sec 2000",
+    "bench_params": [
+        {"max-concurrency": 32, "num-prompts": 200},
+        {"max-concurrency": 512, "num-prompts": 1000}
+    ],
+    "serve_cmd_extra": "--port 8000 --max-num-seqs 2048 --max-model-len 2048 --disable-custom-all-reduce",
+    "dry_run": false,
+    "sweep_latencies": [0, 100, 500, 1000, 1500, 2000, 2500]
+}
