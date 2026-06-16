@@ -76,6 +76,50 @@ def set_figure_style():
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.07,
     })
+    
+def plot_metric_vs_metric(
+    series, df, x_metric, y_metric, 
+    xlabel, ylabel, title,
+    saturation_lines=None,
+    y_lim=None,
+    subtitle_info=None,
+    paper=False,
+):
+    """ line plot of metric vs concurrency for a list of series entries """
+    fig, ax = plt.subplots()
+
+    for s in series:
+        # sort values before plotting
+        plot_df = filter_df(df, **s['filters']).sort_values(x_metric)
+        ax.plot(
+            plot_df[x_metric],
+            plot_df[y_metric],
+            marker=s['marker'],
+            markersize=2,
+            label=s["label"],
+            color=s["color"],
+            linestyle=s['linestyle'],
+        )
+
+    if y_lim != None:
+        ax.set_ylim(y_lim[0], y_lim[1])
+
+    if saturation_lines:
+        for x_val, _ in saturation_lines:
+            ax.axvline(x=x_val, color='grey', linewidth=0.9, linestyle=':')
+ 
+    ax.set_title(title, pad=15)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+#     ax.set_xscale('log', base=2)
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.grid(True, axis='y', alpha=0.3)
+    ax.legend(fontsize=7)
+    if subtitle_info and not paper:
+        subtitle(ax, **subtitle_info)
+    plt.tight_layout()
+    return fig
+
 
 def plot_metric_vs_concurrency(
     series, df, metric, ylabel, title,
