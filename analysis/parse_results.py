@@ -130,7 +130,7 @@ def load_results(experiment_dir: Path):
             metadata = metadata_from_path(summary_csv)
             for k, v in metadata.items():
                 df[k] = v
-            # config path to store gpu ids
+            # config path to store gpu ids and latency injection values
             config_path = summary_csv.parent.parent / "config_merged.json"
 
             if config_path.exists():
@@ -138,10 +138,15 @@ def load_results(experiment_dir: Path):
                     config = json.load(f)
 
                 gpu_ids = config.get("gpu_ids")
+                injected_latency = config.get("injected_latency_us")
 
                 # add gpu_ids
                 if gpu_ids is not None:
                     df["gpu_ids"] = gpu_ids
+
+                # add injected latency
+                if injected_latency is not None:
+                    df["injected_latency_us"] = injected_latency
 
             all_dfs.append(df)
         except Exception as e:
@@ -182,6 +187,7 @@ def average_results(results_csv_path: Path):
         'enable-prefix-caching',
         'dataset-name',
         'dataset-path',
+        'injected_latency_us',
     ]
 
     # only group by existing group columns
