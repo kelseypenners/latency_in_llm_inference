@@ -3,7 +3,7 @@ name: Sync to TU/e GitLab
 on:
   push:
     branches:
-      - '*'
+      - main
 
 jobs:
   sync:
@@ -14,6 +14,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Push to TU/e GitLab
+      - name: Push main to TU/e GitLab
         run: |
-          git push --force --prune https://${{ github.actor }}:${{ secrets.GITLAB_PASSWORD }}@gitlab.tue.nl/k.penners/latency_in_llm_inference.git refs/remotes/origin/*:refs/heads/*
+          git push --force https://${{ github.actor }}:${{ secrets.GITLAB_PASSWORD }}@gitlab.tue.nl/k.penners/latency_in_llm_inference.git main:refs/heads/main
