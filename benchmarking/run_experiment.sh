@@ -25,6 +25,7 @@ options:
   --interconnect <name>    interconnect config (default up to NCCL)
   --tp <n>                 tensor parallel degree (default: 1)
   --runs <n>               number of runs per config (default: 1)
+  --inject-latency-us      number of us to inject into AllReduce operations (default: 0)
   --nccl-debug <level>     enable NCCL debug logging (e.g. INFO, WARN)
   --resume <timestamp>     resume a previous run by its vLLM output timestamp
   --dry-run                print commands without running
@@ -49,6 +50,7 @@ interconnect="default"
 gpu_ids=""
 tp=1
 runs=1
+inject_latency=0
 nccl_debug=""
 resume=""
 dry_run=false
@@ -63,6 +65,7 @@ while [[ $# -gt 0 ]]; do
         --interconnect) interconnect="$2"; shift 2;;
         --tp) tp="$2"; shift 2;;
         --runs) runs="$2"; shift 2;;
+        --inject-latency-us) inject_latency="$2"; shift 2;;
         --nccl-debug) nccl_debug="$2"; shift 2;;
         --resume) resume="$2"; shift 2;;
         --dry-run) dry_run=true; shift;;
@@ -163,6 +166,10 @@ if [[ "$tp" -eq 1 ]]; then
         nccl_comm=""
     fi
 fi
+if [[ "$inject_latency" -gt 0 ]]; then
+    # set environemnt variable if injecting latency
+    nccl_env+=(VLLM_INJECT_LATENCY_US="$inject_latency")
+fi
 
 #-----------------------------------------------
 # output directory
@@ -180,17 +187,18 @@ label="${experiment}_tp${tp}_${interconnect}"
 #-----------------------------------------------
 
 echo "================================================================================"
-echo "experiment    : $experiment"
-echo "model         : $model_name ($model_path)"
-echo "gpu id(s)     : $gpu_ids  ($gpu_type)"
-echo "gpu mem       : $gpu_mem"
-echo "tp            : $tp"
-[[ -n "$nccl_comm" ]] && echo "interconnect  : $nccl_comm"
-echo "runs          : $runs"
-echo "output dir    : $outdir"
-[[ -n "$nccl_debug" ]] && echo "nccl debug    : $nccl_debug" 
-[[ -n "$resume" ]] && echo "resuming run  : $resume"
-[[ "$dry_run" == true ]] && echo "mode          : DRY RUN"
+echo "experiment        : $experiment"
+echo "model             : $model_name ($model_path)"
+echo "gpu id(s)         : $gpu_ids  ($gpu_type)"
+echo "gpu mem           : $gpu_mem"
+echo "tp                : $tp"
+[[ -n "$nccl_comm" ]] && echo "interconnect      : $nccl_comm"
+[[ "$inject_latency" -gt 0 ]] && echo "injected latency  : $inject_latency us"
+echo "runs              : $runs"
+echo "output dir        : $outdir"
+[[ -n "$nccl_debug" ]] && echo "nccl debug        : $nccl_debug" 
+[[ -n "$resume" ]] && echo "resuming run      : $resume"
+[[ "$dry_run" == true ]] && echo "mode              : DRY RUN"
 echo "================================================================================"
 echo ""
 
@@ -257,7 +265,8 @@ echo "$merged" | jq \
     --argjson tp "$tp" \
     --argjson runs "$runs" \
     --arg interconnect "$interconnect" \
-    '. + {gpu_ids: $gpu_ids, tp: $tp, runs: $runs, interconnect: $interconnect}' \
+    --argjson inject_latency "$inject_latency" \
+    '. + {gpu_ids: $gpu_ids, tp: $tp, runs: $runs, interconnect: $interconnect, injected_latency_us: $inject_latency}' \
     > "${run_dir}/config_merged.json"
 
 #-----------------------------------------------
