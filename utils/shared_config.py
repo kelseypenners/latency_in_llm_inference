@@ -130,3 +130,23 @@ def build_interconnect_series(gpu_type, model_name, tp=2):
     ))
     return series
 
+def build_latency_series(concurrencies, gpu_type, model_name, tp=2, interconnect='default'):
+    """ series for concurrencies"""
+    
+    colors = [ "#5CB85C", "#E85C4C", "#9B59B6"]
+    
+    series = []
+    for i, c in enumerate(concurrencies):
+        color = colors[i % len(colors)]
+        
+        series.append(series_entry(
+            label=f"Concurrency = {c}",
+            color=color,
+            gpu_type=gpu_type,
+            model_name=model_name,
+            tp=tp,
+            interconnect=interconnect,
+            max_concurrency=c
+        ))
+    return series
+
