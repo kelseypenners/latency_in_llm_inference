@@ -76,7 +76,7 @@ def set_figure_style():
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.07,
     })
-    
+
 def plot_metric_vs_metric(
     series, df, x_metric, y_metric, 
     xlabel, ylabel, title,
@@ -111,7 +111,6 @@ def plot_metric_vs_metric(
     ax.set_title(title, pad=15)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-#     ax.set_xscale('log', base=2)
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     ax.grid(True, axis='y', alpha=0.3)
     ax.legend(fontsize=7)
