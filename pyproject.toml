@@ -7,4 +7,4 @@ name = "latinllm"
 version = "0.1.0"
 
 [tool.setuptools.packages.find]
-include = ["utils*"]
+include = ["utils*", "analysis*"]
