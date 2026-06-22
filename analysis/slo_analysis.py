@@ -1,7 +1,7 @@
-#%%
 import numpy as np
 import pandas as pd
 import argparse
+from pathlib import Path
 
 from utils.shared_config import *
 from utils.plotting import *
@@ -11,45 +11,51 @@ set_figure_style()
 SLOS = [
         # metric, statistic, threshold, label for csv
         ("ttft", "median", 500, "ttft_responsive_P50"),
-        ("ttft", "p95", 500, "ttft_responsive_P95"),
-        ("ttft", "p95", 3000, "ttft_acceptable_P95"),
+        ("ttft", "p95", 1000, "ttft_responsive_P95"),
+        ("ttft", "p95", 5000, "ttft_acceptable_P95"),
         ("itl", "median", 50, "itl_tight_P50"),
         ("itl", "median", 150, "itl_responsive_P50"),
         ("itl", "p95", 100, "itl_responsive_P95"),
         ("itl", "p95", 250, "itl_acceptable_P95"),
     ]
 
-def find_slo_capacity(df, metric_col, threshold, concurrency_col='max_concurrency'):
-    """ find max concurrency under SLO attainment (interpolate if necessary) """
+def find_slo_limit(df, metric_col, threshold, target_col='max_concurrency'):
+    """ find max target value (concurrency or latency) under SLO attainment (interpolate if necessary) """
     if df.empty:
         return np.nan
-    df = df.sort_values(concurrency_col)
+    df = df.sort_values(target_col)
     metric_values = df[metric_col].values
-    concurrencies = df[concurrency_col].values
+    target_values = df[target_col].values
 
     # find point where SLOs are still met
     attainment_point = np.where(metric_values <= threshold)[0]
     if len(attainment_point) == 0:
-        return 
+        return
     
     last_attaining_sample = attainment_point[-1]
     if last_attaining_sample == len(metric_values) - 1:
-        return int(concurrencies[last_attaining_sample])
+        return int(target_values[last_attaining_sample])
     
     # linearly interpolate based on last and next sample
-    x0, x1 = concurrencies[last_attaining_sample], concurrencies[last_attaining_sample + 1]
+    x0, x1 = target_values[last_attaining_sample], target_values[last_attaining_sample + 1]
     y0, y1 = metric_values[last_attaining_sample], metric_values[last_attaining_sample + 1]
 
     if y1 == y0:
         return int(x0)
-    capacity = x0 + (threshold - y0) * (x1 - x0) / (y1 - y0) 
+    limit = x0 + (threshold - y0) * (x1 - x0) / (y1 - y0) 
     
-    return int(capacity)
+    return int(limit)
 
-def build_slo_attainment_csv(df, output_path="slo_attainment.csv"):
-    """ build dataframe with concurrency capacity for SLO thresholds """
 
+def build_slo_attainment_csv(df, target_col, output_path="slo_attainment.csv"):
+    """ build dataframe with target limits for SLO thresholds """
+ 
     group_cols = ['gpu_type', 'model_name', 'tp', 'interconnect']
+    if target_col == 'injected_latency_us':
+        group_cols.append('max_concurrency')
+    # if target_col == 'max_concurrency':
+    #     group_cols.append('injected_latency_us')
+
     results = []
 
     # go through every SLO for each config defined by group cols
@@ -57,27 +63,29 @@ def build_slo_attainment_csv(df, output_path="slo_attainment.csv"):
         row = dict(zip(group_cols, keys)) 
         for metric, stat, threshold, label in SLOS:
             col_name = f"{stat}_{metric}_ms"
-            capacity = find_slo_capacity(group, col_name, threshold)
-            row[label] = capacity
+            limit = find_slo_limit(group, col_name, threshold, target_col=target_col)
+            row[label] = limit
         
-        # find capacity based on both SLOs
-        responsive_capacity = min(
+        # find combined limit based on both SLOs
+        responsive_limit = min(
             row.get('ttft_responsive_P95', 0) or 0, 
             row.get('itl_responsive_P95', 0) or 0)
-        acceptable_capacity = min(
+        acceptable_limit = min(
             row.get('ttft_acceptable_P95', 0) or 0, 
             row.get('itl_acceptable_P95', 0) or 0)
-        row['capacity_responsive'] = responsive_capacity
-        row['capacity_acceptable'] = acceptable_capacity
+        row['limit_responsive'] = responsive_limit
+        row['limit_acceptable'] = acceptable_limit
 
-        tp = row.get('tp', 1)
-        row['pergpu_capacity_responsive'] = int(responsive_capacity / tp)
-        row['pergpu_capacity_acceptable'] = int(acceptable_capacity / tp) 
+        if target_col == 'max_concurrency': 
+            tp = row.get('tp', 1)
+            row['pergpu_limit_responsive'] = int(responsive_limit / tp)
+            row['pergpu_limit_acceptable'] = int(acceptable_limit / tp) 
+        
         results.append(row)
 
     summary_df = pd.DataFrame(results)
     summary_df.to_csv(output_path, index=False)
-    print(f"saved SLO capacity table to {output_path}")
+    print(f"saved SLO table to {output_path}")
     return summary_df
 
 def main(args):
@@ -88,10 +96,12 @@ def main(args):
 
     df = pd.read_csv(results_csv_path)
 
+    target_col = 'injected_latency_us' if args.mode == 'latency' else 'max_concurrency'
+
     experiment_dir = results_csv_path.parent
     out_path = experiment_dir / 'slo_attainment.csv'
     
-    build_slo_attainment_csv(df, output_path=out_path)
+    build_slo_attainment_csv(df, target_col=target_col, output_path=out_path)
 
 
 if __name__ == "__main__":
@@ -102,6 +112,14 @@ if __name__ == "__main__":
         "results_csv",
         type=str,
         help="path to results csv"
+    )
+
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=['concurrency', 'latency'],
+        default='concurrency',
+        help="which mode to find SLO limits (concurrency or latency)"
     )
 
     args = parser.parse_args()
