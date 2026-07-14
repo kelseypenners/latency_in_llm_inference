@@ -6,7 +6,7 @@ import numpy as np
 import seaborn as sns
 import ast
 
-from plot_utils import *
+from utils.plotting import *
 
 # load experiment data
 seqlen_df = pd.read_csv("../results/seqlen-sweep/averaged_seqlen_sweep_results.csv")
@@ -433,7 +433,7 @@ def plot_kv_saturation_comparison(a100_df, v100_df, title=None, paper=False):
                         alpha=0.07, color='#E85C4C', zorder=0)
 
         ax_left.set_xscale('log', base=2)
-        ax_left.set_xticks([4, 8, 16, 32, 64, 128, 256, 512])
+        ax_left.set_xticks([4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
         ax_left.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
         ax_left.tick_params(axis='x', rotation=45)
         ax_left.set_xlabel('Concurrency', labelpad=6)
@@ -866,7 +866,7 @@ fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
                                              paper=True)
 fig = plot_kv_saturation_comparison(a100_df=a100_concurrency_data,
                                     v100_df=v100_concurrency_data,
-                                    paper=True)
+                                    paper=False)
 
 # PROMPT TYPE PLOTS ----------------------------------------------------
 # %% [markdown]
