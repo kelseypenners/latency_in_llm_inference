@@ -89,6 +89,7 @@ def compute_derived_metrics(df):
 
     # interconnect degradation relative to default
     merged['itl_interconnect_degradation'] = merged['mean_itl_ms'] / merged['itl_default']
+    merged['itl_interconnect_delta_ms'] = merged['mean_itl_ms'] - merged['itl_default']
     merged['ttft_interconnect_degradation'] = merged['mean_ttft_ms'] / merged['ttft_default']
     merged['e2el_interconnect_degradation'] = merged['mean_e2el_ms'] / merged['e2el_default']
     merged['throughput_interconnect_efficiency'] = merged['output_throughput'] / merged['throughput_default']
