@@ -1,4 +1,5 @@
 import json
+import numpy as np
 import pandas as pd
 from pathlib import Path
 import argparse
@@ -165,6 +166,7 @@ def load_results(experiment_dir: Path):
     print(f"saved {output_path} ({len(combined)} rows)")
     return combined
 
+
 def average_results(results_csv_path: Path):
     """ average results across runs of identical configs """
 
@@ -198,8 +200,31 @@ def average_results(results_csv_path: Path):
     metric_cols = df.columns.difference(drop_cols)
     metric_cols = df[metric_cols].select_dtypes(include="number").columns
 
-    averaged = df.groupby(group_cols, dropna=False, as_index=False)\
-        [metric_cols].mean()
+    std_metrics = [
+        'duration',
+        'mean_e2el_ms', 'median_e2el_ms',
+        'mean_itl_ms', 'median_itl_ms',
+        'mean_tpot_ms', 'median_tpot_ms',
+        'mean_ttft_ms', 'median_ttft_ms',
+        'output_throughput', 'request_throughput'
+    ]
+    std_metric_cols = [col for col in std_metrics if col in metric_cols]
+
+    # group data
+    grouped = df.groupby(group_cols, dropna=False)
+    
+    # calculate mean and standard deviation
+    means = grouped[metric_cols].mean()
+    stds = grouped[std_metric_cols].std()
+
+    # calculate percent standard deviation
+    pct_std = (stds / means[std_metric_cols].abs() * 100).replace([np.inf, -np.inf], np.nan).fillna(0)
+
+    # rename columns to std_runs_{metric}
+    pct_std.columns = [f"std_runs_{col}" for col in std_metric_cols]
+
+    # combine means and percent standard deviations
+    averaged = pd.concat([means, pct_std], axis=1).reset_index()
     
     output_path = results_csv_path.parent / ('averaged_' + results_csv_path.name)
     averaged.to_csv(output_path, index=False)
