@@ -133,7 +133,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        help='model name'
+        help='model name (llama_1b, llama_8b, llama_13b)'
     )
 
     parser.add_argument(

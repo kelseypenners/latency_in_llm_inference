@@ -76,7 +76,7 @@ def build_tp_series(gpu_type, model_name, interconnect='default'):
     series = []
     for tp in [1,2,4]:
         temp = interconnect
-        if model_name != "llama_3.1_8b" and tp == 1:
+        if model_name != "llama-3.1-8b" and tp == 1:
             interconnect = "default"
         series.append(series_entry(
             label=f"TP={tp}",
