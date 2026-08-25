@@ -6,17 +6,21 @@ from pathlib import Path
 from utils.shared_config import *
 from utils.plotting import *
 
-set_figure_style()
-
 SLOS = [
         # metric, statistic, threshold, label for csv
         ("ttft", "median", 500, "ttft_responsive_P50"),
+        ("itl", "median", 150, "itl_responsive_P50"),
+
         ("ttft", "p95", 1000, "ttft_responsive_P95"),
         ("ttft", "p95", 5000, "ttft_acceptable_P95"),
-        ("itl", "median", 50, "itl_tight_P50"),
-        ("itl", "median", 150, "itl_responsive_P50"),
         ("itl", "p95", 100, "itl_responsive_P95"),
         ("itl", "p95", 250, "itl_acceptable_P95"),
+
+        ("ttft", "p90", 1000, "ttft_responsive_P90"),
+        ("ttft", "p90", 5000, "ttft_acceptable_P90"),
+        ("itl", "p90", 100, "itl_responsive_P90"),
+        ("itl", "p90", 250, "itl_acceptable_P90")
+
     ]
 
 def find_slo_limit(df, metric_col, threshold, target_col='max_concurrency'):
@@ -67,19 +71,29 @@ def build_slo_attainment_csv(df, target_col, output_path="slo_attainment.csv"):
             row[label] = limit
         
         # find combined limit based on both SLOs
-        responsive_limit = min(
+        responsive_limit_95 = min(
             row.get('ttft_responsive_P95', 0) or 0, 
             row.get('itl_responsive_P95', 0) or 0)
-        acceptable_limit = min(
+        responsive_limit_90 = min(
+            row.get('ttft_responsive_P90', 0) or 0, 
+            row.get('itl_responsive_P90', 0) or 0)
+        acceptable_limit_95 = min(
             row.get('ttft_acceptable_P95', 0) or 0, 
             row.get('itl_acceptable_P95', 0) or 0)
-        row['limit_responsive'] = responsive_limit
-        row['limit_acceptable'] = acceptable_limit
+        acceptable_limit_90 = min(
+            row.get('ttft_acceptable_P90', 0) or 0, 
+            row.get('itl_acceptable_P90', 0) or 0)
+        row['limit_responsive_95'] = responsive_limit_95
+        row['limit_responsive_90'] = responsive_limit_90
+        row['limit_acceptable_95'] = acceptable_limit_95
+        row['limit_acceptable_90'] = acceptable_limit_90
 
         if target_col == 'max_concurrency': 
             tp = row.get('tp', 1)
-            row['pergpu_limit_responsive'] = int(responsive_limit / tp)
-            row['pergpu_limit_acceptable'] = int(acceptable_limit / tp) 
+            row['pergpu_limit_responsive_90'] = int(responsive_limit_90 / tp)
+            row['pergpu_limit_responsive_95'] = int(responsive_limit_95 / tp)
+            row['pergpu_limit_acceptable_90'] = int(acceptable_limit_90 / tp) 
+            row['pergpu_limit_acceptable_95'] = int(acceptable_limit_95 / tp) 
         
         results.append(row)
 
@@ -119,7 +133,7 @@ if __name__ == "__main__":
         type=str,
         choices=['concurrency', 'latency'],
         default='concurrency',
-        help="which mode to find SLO limits (concurrency or latency)"
+        help="which mode to find SLO limits"
     )
 
     args = parser.parse_args()
