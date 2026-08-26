@@ -1,9 +1,7 @@
-#%%
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
-import matplotlib.ticker as ticker
 import json
 
 from utils.shared_config import *
@@ -84,29 +82,63 @@ def merge_measurements_onto_df(df, nccl_df):
     df_copy['allreduce_lat_ms'] = single_allreduce_lat_ms
     return df_copy
 
-def plot_message_size_vs_concurrency(models=MODELS):
-    """ message size per AllReduce as concurrency grows, per model """
-    fig, ax = plt.subplots(figsize=(6, 3.5))
+def add_predicted_itl_deltas(df):
+    """ compute observed and predicted ITL deltas relative to default  """
 
-    colors = ["#E85C4C", "#4C9BE8", "#5CB85C"]
-    for ((name, model), color) in zip(models.items(), colors):
-        sizes = [allreduce_message_size_bytes(b, model['hidden_size']) / 1024
-                 for b in CONCURRENCIES]
-        ax.plot(CONCURRENCIES, sizes, label=name, color=color, marker='o', markersize=2)
+    df = df.copy()
+    key_cols = ['model_name', 'tp', 'max_concurrency', 'gpu_type']
 
-    ax.set_xscale('log', base=2)
-    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-    ax.set_yscale('log', base=2)
-    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{x:.0f} KB' if x < 1024 else f'{x/1024:.0f} MB'))
-    ax.set_xlabel('Concurrency (batch size)')
-    ax.set_ylabel('AllReduce message size')
-    ax.set_title('AllReduce Message Size vs Concurrency', pad=10)
-    ax.legend(fontsize=7)
-    ax.grid(True, axis='y', alpha=0.3)
-    plt.tight_layout()
-    return fig
-       
+    # get default row for each config
+    default_df = (
+        df[df['interconnect'] == 'default']
+        [key_cols + ['mean_itl_ms', 'predicted_comm_ms']]
+        .rename(columns={
+            'mean_itl_ms': 'itl_default_ms',
+            'predicted_comm_ms': 'predicted_comm_default_ms',
+        })
+    )
+
+    merged = df.merge(default_df, on=key_cols, how='left')
+
+    # deltas relative to default
+    merged['observed_itl_delta_ms'] = merged['mean_itl_ms'] - merged['itl_default_ms']
+    merged['predicted_itl_delta_ms'] = merged['predicted_comm_ms'] - merged['predicted_comm_default_ms']
+
+    # calculate percent error
+    merged = merged[
+        (merged['interconnect'] != 'default') & (merged['tp'] > 1)].copy()
+
+    merged['pct_error'] = (
+        (merged['predicted_itl_delta_ms'] - merged['observed_itl_delta_ms']).abs()
+        / merged['observed_itl_delta_ms'].abs() * 100)
+
+    return merged
+
+# def plot_message_size_vs_concurrency(models=MODELS):
+#     """ message size per AllReduce as concurrency grows, per model """
+#     fig, ax = plt.subplots(figsize=(6, 3.5))
+
+#     colors = ["#E85C4C", "#4C9BE8", "#5CB85C"]
+#     for ((name, model), color) in zip(models.items(), colors):
+#         sizes = [allreduce_message_size_bytes(b, model['hidden_size']) / 1024
+#                  for b in CONCURRENCIES]
+#         ax.plot(CONCURRENCIES, sizes, label=name, color=color, marker='o', markersize=2)
+
+#     ax.set_xscale('log', base=2)
+#     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+#     ax.set_yscale('log', base=2)
+#     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{x:.0f} KB' if x < 1024 else f'{x/1024:.0f} MB'))
+#     ax.set_xlabel('Concurrency (batch size)')
+#     ax.set_ylabel('AllReduce message size')
+#     ax.set_title('AllReduce Message Size vs Concurrency', pad=10)
+#     ax.legend(fontsize=7)
+#     ax.grid(True, axis='y', alpha=0.3)
+#     plt.tight_layout()
+#     return fig
+
+
 def main(args):
+
     results_csv_path = Path(args.results_csv)
     nccl_csv_path = Path(args.nccl_csv)
 
@@ -121,14 +153,14 @@ def main(args):
     nccl_df = pd.read_csv(nccl_csv_path)
 
     combined_data = merge_measurements_onto_df(results_df, nccl_df)
+    combined_data = add_predicted_itl_deltas(combined_data)
 
     output_path = results_csv_path.parent / "data_with_allreduce_stuff.csv"
     combined_data.to_csv(output_path, index=False)
     print(f"data with matching allreduce measurements saved to: {output_path}")
 
-    fig = plot_message_size_vs_concurrency()
-    plt.show()
-
+    # fig = plot_message_size_vs_concurrency()
+    # plt.show()
 
 if __name__ == "__main__":
 
@@ -149,4 +181,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
 
