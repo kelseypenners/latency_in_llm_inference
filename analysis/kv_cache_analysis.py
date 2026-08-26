@@ -4,7 +4,7 @@ import argparse
 from utils.shared_config import *
 
 # --------------------------------------------------------------------------
-# kv cache functions
+# kv cache computation functions
 # --------------------------------------------------------------------------
 def kv_per_request_gb(
         num_layers,
@@ -96,6 +96,7 @@ def saturation_points_across_tps(
             activation_frac=activation_frac,
             **model_config
         )
+        if sat < 0: sat = 0
         rows.append({"tp": tp, "saturation_point": round(sat)})
     df = pd.DataFrame(rows)
     print(f"\n{model_name}  |   gpu_vram={gpu_vram}GB   |   ISL/OSL={isl}/{osl}")
@@ -104,7 +105,7 @@ def saturation_points_across_tps(
 
 def main(args):
 
-    tps = [1,2,4]
+    tps = [1,2,4,8]
 
     gpu_vram = args.gpu_vram
     activation_frac = args.activation_frac
@@ -112,13 +113,8 @@ def main(args):
     print(f"\nPREDICTED SATURATION POINTS FOR {gpu_vram}GB GPUS")
     print(f"    using ISL={args.isl} / OSL={args.osl}")
 
-    if args.model:
-        if args.model not in MODELS:
-            print(f"error: model {args.model} not found in model config")
-            return
-        models_to_run = [args.model]
-    else:
-        models_to_run = list(MODELS.keys())
+    # calculate for all models 
+    models_to_run = list(MODELS.keys())
 
 
     for model_name in models_to_run:
@@ -129,15 +125,9 @@ def main(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    
-    parser.add_argument(
-        "--model",
-        type=str,
-        help='model name (llama_1b, llama_8b, llama_13b)'
-    )
 
     parser.add_argument(
-        "--gpu-vram",
+        "gpu_vram",
         type=int,
         help="number of GB VRAM of a single GPU"
     )
