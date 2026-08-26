@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import argparse
 import json
 
@@ -82,6 +81,7 @@ def merge_measurements_onto_df(df, nccl_df):
     df_copy['allreduce_lat_ms'] = single_allreduce_lat_ms
     return df_copy
 
+
 def add_predicted_itl_deltas(df):
     """ compute observed and predicted ITL deltas relative to default  """
 
@@ -104,13 +104,14 @@ def add_predicted_itl_deltas(df):
     merged['observed_itl_delta_ms'] = merged['mean_itl_ms'] - merged['itl_default_ms']
     merged['predicted_itl_delta_ms'] = merged['predicted_comm_ms'] - merged['predicted_comm_default_ms']
 
-    # calculate percent error
-    merged = merged[
-        (merged['interconnect'] != 'default') & (merged['tp'] > 1)].copy()
+    # calculate percent error for the juist configs
+    mask = (merged["interconnect"] != "default") & (merged["tp"] > 1)
 
-    merged['pct_error'] = (
+    pct_error = (
         (merged['predicted_itl_delta_ms'] - merged['observed_itl_delta_ms']).abs()
         / merged['observed_itl_delta_ms'].abs() * 100)
+
+    merged["pct_error"] = np.where(mask, pct_error, np.nan)
 
     return merged
 
