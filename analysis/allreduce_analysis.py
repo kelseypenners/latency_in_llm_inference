@@ -115,28 +115,6 @@ def add_predicted_itl_deltas(df):
 
     return merged
 
-# def plot_message_size_vs_concurrency(models=MODELS):
-#     """ message size per AllReduce as concurrency grows, per model """
-#     fig, ax = plt.subplots(figsize=(6, 3.5))
-
-#     colors = ["#E85C4C", "#4C9BE8", "#5CB85C"]
-#     for ((name, model), color) in zip(models.items(), colors):
-#         sizes = [allreduce_message_size_bytes(b, model['hidden_size']) / 1024
-#                  for b in CONCURRENCIES]
-#         ax.plot(CONCURRENCIES, sizes, label=name, color=color, marker='o', markersize=2)
-
-#     ax.set_xscale('log', base=2)
-#     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-#     ax.set_yscale('log', base=2)
-#     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{x:.0f} KB' if x < 1024 else f'{x/1024:.0f} MB'))
-#     ax.set_xlabel('Concurrency (batch size)')
-#     ax.set_ylabel('AllReduce message size')
-#     ax.set_title('AllReduce Message Size vs Concurrency', pad=10)
-#     ax.legend(fontsize=7)
-#     ax.grid(True, axis='y', alpha=0.3)
-#     plt.tight_layout()
-#     return fig
-
 
 def main(args):
 
@@ -159,9 +137,6 @@ def main(args):
     output_path = results_csv_path.parent / "data_with_allreduce_stuff.csv"
     combined_data.to_csv(output_path, index=False)
     print(f"data with matching allreduce measurements saved to: {output_path}")
-
-    # fig = plot_message_size_vs_concurrency()
-    # plt.show()
 
 if __name__ == "__main__":
 
