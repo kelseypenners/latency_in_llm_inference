@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import seaborn as sns
-import ast
+import matplot2tikz
 
 from utils.plotting import *
 
@@ -23,7 +23,8 @@ v100_seqlen_data = filter_df(seqlen_df, gpu_type ='v100')
 a100_concurrency_data = filter_df(concurrency_df, 
                                   gpu_type = 'a100',
                                   model_name = 'llama-3.1-8b',
-                                  tp = 1)
+                                  tp = 1,
+                                  interconnect="default")
 v100_concurrency_data = filter_df(concurrency_df, 
                                   gpu_type = 'v100',
                                   model_name= 'llama-3.1-8b',
@@ -42,7 +43,7 @@ def plot_input_output_heatmap(df, gpu_type, values, title, cmap='Oranges', paper
                            columns='random_input_len')
 
     fig, ax = plt.subplots()
-    sns.heatmap(pivot, annot=True, fmt='.0f', cmap=cmap, ax=ax,
+    sns.heatmap(pivot, annot=True, fmt='.1f', cmap=cmap, ax=ax,
                 linecolor='white', linewidths=0.5, annot_kws={"size": 7})
     ax.invert_yaxis()
     ax.set_title(title, pad=10)
@@ -707,7 +708,8 @@ fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 values='mean_ttft_ms',
                                 title='A100 TTFT [ms]',
                                 cmap='coolwarm',
-                                paper=False)
+                                paper=True)
+matplot2tikz.save("a100_ttft.tex")
 fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 values='output_throughput',
                                 title='A100 Output Throughput [tokens/s]',
@@ -768,6 +770,7 @@ fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 title='V100 TTFT [ms]',
                                 cmap='coolwarm',
                                 paper=True)
+matplot2tikz.save("v100_ttft.tex")
 fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 values='output_throughput',
                                 title='V100 Output Throughput [tokens/s]',
@@ -864,9 +867,11 @@ fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
                                              ylabel='TTFT [ms]',
                                              title='TTFT vs Concurrency',
                                              paper=True)
+
 fig = plot_kv_saturation_comparison(a100_df=a100_concurrency_data,
                                     v100_df=v100_concurrency_data,
-                                    paper=False)
+                                    paper=True)
+matplot2tikz.save("kvsaturation_singlegpu.tex")
 
 # PROMPT TYPE PLOTS ----------------------------------------------------
 # %% [markdown]
@@ -886,3 +891,5 @@ fig = gpu_mem_piechart(gpu_type='V100 32GB', total_vram=32,
 
 fig = gpu_mem_piechart(paper=True)
 
+
+# %%

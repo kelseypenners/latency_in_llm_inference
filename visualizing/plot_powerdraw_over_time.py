@@ -4,13 +4,14 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime, timedelta
 import numpy as np
+import matplot2tikz
 
 from analysis.parse_power_measurements import *
 from utils.plotting import *
 
 # set_figure_style()
 
-def plot_run_power(run_row, cached_dirs, gpu_id=None, window_pct_start=None):
+def plot_run_power(run_row, cached_dirs, gpu_id=None, window_pct_start=None, max_seconds=None):
     """ plot power draw over time for single run """
 
     # find corresponding power log
@@ -23,6 +24,8 @@ def plot_run_power(run_row, cached_dirs, gpu_id=None, window_pct_start=None):
     end_time = datetime.strptime(str(run_row['date']).strip(), "%Y%m%d-%H%M%S")
     duration = float(run_row['duration'])
     start_time = end_time - timedelta(seconds=duration)
+
+    print(f"run {run_row.get('model_name')} total runtime: {duration:.2f} seconds")
 
     # get gpu ids for power log parsing
     gpu_ids = get_gpu_ids(run_row.get('gpu_ids'))
@@ -82,8 +85,13 @@ def plot_run_power(run_row, cached_dirs, gpu_id=None, window_pct_start=None):
         
         if window_pct_start:
             window_mask = (seconds_from_start >= x_min) & (seconds_from_start <= x_max)
-            seconds_from_start = seconds_from_start[window_mask]
-            powers = powers[window_mask]
+        if max_seconds is not None:
+            window_mask = (seconds_from_start >= 0) & (seconds_from_start <= max_seconds)
+        else:
+            window_mask = np.ones(len(seconds_from_start), dtype=bool)
+
+        seconds_from_start = seconds_from_start[window_mask]
+        powers = powers[window_mask]
 
         ax.plot(seconds_from_start, powers, marker='o', 
                 markersize=0, linestyle='-', linewidth=0.5, label=f'GPU {gpu_id}')
@@ -100,6 +108,8 @@ def plot_run_power(run_row, cached_dirs, gpu_id=None, window_pct_start=None):
              run_date=f"run timestamp: {run_row['date']}")
     
     plt.tight_layout()
+
+    return fig
 
 if __name__ == "__main__":
     pass
@@ -120,16 +130,17 @@ if __name__ == "__main__":
             continue
     cached_dirs.sort(key=lambda x: x[0])
 
-    for x in [0,100,500,1000, 1500, 2000]:
+    for x in [0,100,500,1000,1500,2000]:
 
-        filtered_df = filter_df(results_df, model_name="llama-2-13b", tp=2, injected_latency_us=x, max_concurrency=512)
+        filtered_df = filter_df(results_df, model_name="llama-3.1-8b", tp=2, injected_latency_us=x, max_concurrency=32)
 
-        for _, row in filtered_df.iterrows():
+        for i, row in filtered_df.iterrows():
 
             # plot_run_power(row, cached_dirs, gpu_id=6)
             # plot_run_power(row, cached_dirs, gpu_id=7)
-            plot_run_power(row, cached_dirs)
-            plot_run_power(row, cached_dirs, window_pct_start=0.7)
+            fig = plot_run_power(row, cached_dirs, max_seconds=50)
+            matplot2tikz.save(f"powerprof_injection_{x}.tex")
+            # plot_run_power(row, cached_dirs, window_pct_start=0.7)
     
     #%%
     #%%
@@ -149,16 +160,19 @@ if __name__ == "__main__":
             continue
     cached_dirs.sort(key=lambda x: x[0])
 
-    for x in [4,8,16,32,64,128, 256,512]:
+    #%%
+    for x in [32]:
+        for transport in ['default', 'p2p_disabled', 'network_socket']:
+        
+            filtered_df = filter_df(results_df, model_name="llama-3.1-8b", tp=2,
+                                    max_concurrency=x, gpu_type='a100', interconnect=transport)
 
-        filtered_df = filter_df(results_df, model_name="llama-3.2-1b", tp=2,
-                                 max_concurrency=x, gpu_type='a100', interconnect='default')
+            for i, row in filtered_df.iterrows():
 
-        for _, row in filtered_df.iterrows():
-
-            # plot_run_power(row, cached_dirs, gpu_id=6)
-            # plot_run_power(row, cached_dirs, gpu_id=7)
-            plot_run_power(row, cached_dirs)
-            #plot_run_power(row, cached_dirs, window_pct_start=0.7)
-    
+                # plot_run_power(row, cached_dirs, gpu_id=6)
+                # plot_run_power(row, cached_dirs, gpu_id=7)
+                fig = plot_run_power(row, cached_dirs, max_seconds=50)
+                # matplot2tikz.save(f"powerprof_transport_{transport}.tex")
+                #plot_run_power(row, cached_dirs, window_pct_start=0.7)
+        
 # %%
