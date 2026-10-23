@@ -5,7 +5,7 @@
         {"random_input_len":2048, 
         "random_output_len": 32, 
         "max-concurrency": 256,
-        "num-prompts": 2500},
+        "num-prompts": 1000},
         {"random_input_len": 32, 
         "random_output_len": 2048, 
         "max-concurrency": 256,
