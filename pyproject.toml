@@ -3,8 +3,18 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "latinllm"
+name = "latency_in_llm_inference"
 version = "0.1.0"
+description = "Communication latency in tensor-parallel LLM inference: benchmarking, analysis, plotting"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "scikit-learn",
+]
 
 [tool.setuptools.packages.find]
 include = ["utils*", "analysis*"]
