@@ -2,6 +2,7 @@
 
 results*/
 *.csv
+!data/**/*.csv
 test_*.json
 Llama*/
 idk_*
