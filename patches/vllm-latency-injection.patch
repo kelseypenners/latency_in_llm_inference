@@ -1,0 +1,30 @@
+--- a/vllm/distributed/device_communicators/pynccl.py
++++ b/vllm/distributed/device_communicators/pynccl.py
+@@ -133,6 +133,15 @@
+         assert isinstance(device, torch.device)
+         self.device = device
+         # nccl communicator and stream will use this device
++        
++        import os
++        # read latency injection environment variable
++        INJECT_LATENCY_US = float(os.environ.get("VLLM_INJECT_LATENCY_US", "0") or 0)
++        self.allreduce_sleep_cycles = 0
++        if INJECT_LATENCY_US > 0:
++            # clock rate hard-coded for A100 GPU
++            self.allreduce_sleep_cycles = int(INJECT_LATENCY_US * 1410)
++        
+         # `torch.cuda.device` is a context manager that changes the
+         # current cuda device to the specified one
+         with torch.cuda.device(device):
+@@ -169,6 +178,11 @@
+ 
+         if stream is None:
+             stream = current_stream()
++
++        # add gpu side sleep for specified number of clock cycles
++        if getattr(self, "allreduce_sleep_cycles", 0) > 0:
++            torch.cuda._sleep(self.allreduce_sleep_cycles)
++
+         self.nccl.ncclAllReduce(
+             buffer_type(in_tensor.data_ptr()),
+             buffer_type(out_tensor.data_ptr()),
