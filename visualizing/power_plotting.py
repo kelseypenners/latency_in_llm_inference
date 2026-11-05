@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-import json
-import matplot2tikz
 
 from utils.shared_config import *
 from utils.plotting import *
@@ -69,10 +67,9 @@ def plot_percent_energy_increase(
 if __name__ == "__main__":
     pass
     #%%
-    results_dir = "../results/"
 
     # load data
-    power_df = pd.read_csv(f"{results_dir}concurrency-sweep/power_metrics.csv")
+    power_df = pd.read_csv(f"{RESULTS_DIR}concurrency-sweep/power_metrics.csv")
     power_df = power_df[(power_df['num_power_samples'] > 100)]
 
     a100_8b_default = build_tp_series('a100', 'llama-3.1-8b')
@@ -124,7 +121,6 @@ if __name__ == "__main__":
     fig = plot_metric_vs_concurrency(a100_8b_combined, power_df, metric='joules_per_output_token',
                                      ylabel="Energy per Token (J)", title='Energy Usage Across Concurrencies',
                                      subtitle_info=sub_a100_8b)
-    matplot2tikz.save("idk.tex")
     # fig = plot_metric_vs_concurrency(a100_1b_combined, power_df, metric='joules_per_total_token',
     #                                  ylabel="Energy per Total Token (J)", title='Energy Usage Across Concurrencies: \nP2P / P2P Disabled',
     #                                  subtitle_info=sub_a100_1b)
@@ -156,7 +152,6 @@ if __name__ == "__main__":
         title="Percent Energy Increase per Token Across Transports",
         subtitle_info=sub_a100_8b
     )
-    matplot2tikz.save("idk1.tex")
 
     fig2 = plot_percent_energy_increase(
         a100_13b_default, a100_13b_p2pdisabled, power_df, 

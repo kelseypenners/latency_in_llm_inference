@@ -1,5 +1,8 @@
 import numpy as np
 
+# results directory
+RESULTS_DIR = "../results/"
+
 # model configs
 MODELS = {
     "llama_1b": {

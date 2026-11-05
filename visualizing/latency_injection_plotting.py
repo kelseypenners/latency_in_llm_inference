@@ -289,10 +289,9 @@ def plot_tp2_to_tp4_extrapolation(df, model_name, concurrency, metric, ylabel, t
 if __name__ == "__main__":
     pass
     #%%
-    results_dir = "../results/"
 
     # load data
-    power_df = pd.read_csv(f"{results_dir}latency_injection/power_metrics.csv")
+    power_df = pd.read_csv(f"{RESULTS_DIR}latency_injection/power_metrics.csv")
 
     injection_series_tp2_8b = build_latency_series([32,512], gpu_type='a100', model_name='llama-3.1-8b')
     injection_series_tp4_8b = build_latency_series([32,512], gpu_type='a100', 
@@ -593,35 +592,3 @@ if __name__ == "__main__":
         fig = plot_tp2_to_tp4_extrapolation(power_df, "llama-2-13b", concurrency=512, metric=metric, 
                                             ylabel=ylabel, title="high concurrency",
                                             subtitle_info=sub_a100_8b)
-# # %%
-# claude_df = pd.read_csv(f"{results_dir}latency_injection/claude_power_metrics.csv")
-# injection_series_tp4_13b = build_latency_series([128,512], gpu_type='a100', 
-#                                                     model_name='llama-2-13b', tp=4)
-
-# #%%
-# # 13B TP4
-# fig = plot_metric_vs_injection(injection_series_tp4_13b, claude_df,
-#                             y_metric="joules_per_total_token",
-#                             ylabel="Energy per Total Token (J)",
-#                             title="Energy Cost Per Token vs Injected Latency",
-#                             subtitle_info=sub_a100_13b,
-#                             relative=False)
-# fig = plot_metric_vs_injection(injection_series_tp4_13b, claude_df,
-#                                 y_metric="median_itl_ms",
-#                                 ylabel="Inter-token Latency (ms)",
-#                                 title="ITL vs Injected Latency",
-#                                 subtitle_info=sub_a100_13b)
-# fig = plot_metric_vs_injection(injection_series_tp4_13b, claude_df,
-#                                 y_metric="median_ttft_ms",
-#                                 ylabel="TTFT (ms)",
-#                                 y_logscale=True,
-#                                 title="TTFT vs Injected Latency",
-#                                 subtitle_info=sub_a100_13b)
-# fig = plot_metric_vs_injection(injection_series_tp4_13b, claude_df,
-#                                 y_metric="output_throughput",
-#                                 ylabel="Output Throughput (tokens/s)",
-#                                 title="Throughput vs Injected Latency",
-#                                 subtitle_info=sub_a100_13b,
-#                                 relative=relative)
-
-# %%

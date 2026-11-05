@@ -4,16 +4,13 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import seaborn as sns
-import matplot2tikz
 
 from utils.plotting import *
+from utils.shared_config import RESULTS_DIR
 
 # load experiment data
-seqlen_df = pd.read_csv("../results/seqlen-sweep/averaged_seqlen_sweep_results.csv")
-concurrency_df = pd.read_csv("../results/concurrency-sweep/averaged_concurrency_sweep_results.csv")
-# load prompt type data
-prompttype_df = pd.read_csv('../archive/results_archive/single-gpu/dataset-comparison/prompttype_10runs_1prompt.csv')
-prompttype_df_2 = pd.read_csv('../archive/results_archive/single-gpu/dataset-comparison/prompttype_prefixcache_results.csv')
+seqlen_df = pd.read_csv(f"{RESULTS_DIR}seqlen-sweep/averaged_seqlen_sweep_results.csv")
+concurrency_df = pd.read_csv(f"{RESULTS_DIR}concurrency-sweep/averaged_concurrency_sweep_results.csv")
 
 # filter for gpu specific seqlen data
 a100_seqlen_data = filter_df(seqlen_df, gpu_type = 'a100')
@@ -709,7 +706,6 @@ fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 title='A100 TTFT [ms]',
                                 cmap='coolwarm',
                                 paper=True)
-matplot2tikz.save("a100_ttft.tex")
 fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 values='output_throughput',
                                 title='A100 Output Throughput [tokens/s]',
@@ -770,7 +766,6 @@ fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 title='V100 TTFT [ms]',
                                 cmap='coolwarm',
                                 paper=True)
-matplot2tikz.save("v100_ttft.tex")
 fig = plot_input_output_heatmap(df=data, gpu_type=gpu_type,
                                 values='output_throughput',
                                 title='V100 Output Throughput [tokens/s]',
@@ -871,18 +866,7 @@ fig = plot_metrics_vs_concurrency_comparison(a100_df=a100_concurrency_data,
 fig = plot_kv_saturation_comparison(a100_df=a100_concurrency_data,
                                     v100_df=v100_concurrency_data,
                                     paper=True)
-matplot2tikz.save("kvsaturation_singlegpu.tex")
 
-# PROMPT TYPE PLOTS ----------------------------------------------------
-# %% [markdown]
-## Prompt Type
-fig = plot_prompt_type_ttft(prompttype_df_2, gpu_type='A100 40GB', isl=512, osl=64, paper=True)
-fig = plot_prompt_type_e2el(prompttype_df_2, gpu_type='A100 40GB', isl=512, osl=64, paper=True)
-
-# %%
-fig = plot_ttft_zero_mean(prompttype_df_2, gpu_type='A100 40GB', run_number=1, prefix_caching=True)
-fig = plot_ttft_zero_mean(prompttype_df_2, gpu_type='A100 40GB', run_number=1, prefix_caching=False, paper=True)
-fig = plot_ttft_raw(prompttype_df_2, gpu_type='A100 40GB', run_number=1, paper=True)
 # %%
 fig = gpu_mem_piechart(gpu_type='A100 40GB', total_vram=40, 
                        title='A100 GPU Memory Allocation', paper=True)

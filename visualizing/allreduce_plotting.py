@@ -4,7 +4,6 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import json
-import matplot2tikz
 
 from analysis.allreduce_analysis import *
 from utils.plotting import *
@@ -24,9 +23,9 @@ SATURATION_POINTS = {
     ("llama-2-13b", 4): 149,
 }
 
-results_dir = "../results/"
-combined_data = pd.read_csv(f"{results_dir}concurrency-sweep/data_with_allreduce_stuff.csv")
-nccl_df = pd.read_csv(f"{results_dir}interconnect_characterization/interconnect_characterization_frames.csv")
+
+combined_data = pd.read_csv(f"{RESULTS_DIR}concurrency-sweep/data_with_allreduce_stuff.csv")
+nccl_df = pd.read_csv(f"{RESULTS_DIR}interconnect_characterization/interconnect_characterization_frames.csv")
 
 combined_data.to_csv("data_with_allreduce_stuff_saturation_cap.csv", index=False)
 

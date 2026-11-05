@@ -4,10 +4,10 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime, timedelta
 import numpy as np
-import matplot2tikz
 
 from analysis.parse_power_measurements import *
 from utils.plotting import *
+from utils.shared_config import RESULTS_DIR
 
 # set_figure_style()
 
@@ -114,8 +114,8 @@ def plot_run_power(run_row, cached_dirs, gpu_id=None, window_pct_start=None, max
 if __name__ == "__main__":
     pass
     #%%
-    experiment_dir = Path("../results/latency_injection")
-    results_csv_path = Path("../results/latency_injection/latency_injection_results.csv")
+    experiment_dir = Path(f"{RESULTS_DIR}latency_injection")
+    results_csv_path = Path(f"{RESULTS_DIR}latency_injection/latency_injection_results.csv")
 
     results_df = pd.read_csv(results_csv_path)
 
@@ -139,13 +139,12 @@ if __name__ == "__main__":
             # plot_run_power(row, cached_dirs, gpu_id=6)
             # plot_run_power(row, cached_dirs, gpu_id=7)
             fig = plot_run_power(row, cached_dirs, max_seconds=50)
-            matplot2tikz.save(f"powerprof_injection_{x}.tex")
             # plot_run_power(row, cached_dirs, window_pct_start=0.7)
     
     #%%
     #%%
-    experiment_dir = Path("../results/concurrency-sweep")
-    results_csv_path = Path("../results/concurrency-sweep/concurrency_sweep_results.csv")
+    experiment_dir = Path(f"{RESULTS_DIR}concurrency-sweep")
+    results_csv_path = Path(f"{RESULTS_DIR}concurrency-sweep/concurrency_sweep_results.csv")
 
     results_df = pd.read_csv(results_csv_path)
 
@@ -172,7 +171,6 @@ if __name__ == "__main__":
                 # plot_run_power(row, cached_dirs, gpu_id=6)
                 # plot_run_power(row, cached_dirs, gpu_id=7)
                 fig = plot_run_power(row, cached_dirs, max_seconds=50)
-                # matplot2tikz.save(f"powerprof_transport_{transport}.tex")
                 #plot_run_power(row, cached_dirs, window_pct_start=0.7)
         
 # %%

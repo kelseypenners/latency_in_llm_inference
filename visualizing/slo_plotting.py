@@ -9,9 +9,8 @@ set_figure_style()
 if __name__ == "__main__":
     pass
     #%%
-    results_dir = "../results/"
 
-    df = pd.read_csv(f"{results_dir}concurrency-sweep/averaged_concurrency_sweep_results.csv")
+    df = pd.read_csv(f"{RESULTS_DIR}concurrency-sweep/averaged_concurrency_sweep_results.csv")
 
     a100_1b_default = build_tp_series('a100', 'llama-3.2-1b')
     a100_1b_p2pdisabled = build_tp_series('a100', 'llama-3.2-1b', 'p2p_disabled')
@@ -29,7 +28,7 @@ if __name__ == "__main__":
         'responsive': ('*', 60, '--'), 'acceptable': ('D', 30, ':'),
     }
 
-    slo_summary = pd.read_csv(f"{results_dir}/concurrency-sweep/slo_attainment.csv")
+    slo_summary = pd.read_csv(f"{RESULTS_DIR}/concurrency-sweep/slo_attainment.csv")
 
     fig = plot_metric_vs_concurrency(
         a100_1b_default, df,
@@ -103,5 +102,3 @@ plt.xlabel('GPU & Model Configuration')
 plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
 
-matplot2tikz.save("slo_heatmap.tex")
-# %%

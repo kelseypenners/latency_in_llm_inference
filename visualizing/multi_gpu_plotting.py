@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.lines import Line2D
 import numpy as np
-import matplot2tikz
 
 from utils.plotting import *
 from utils.shared_config import *
@@ -15,14 +14,14 @@ set_figure_style()
 # data loading
 # --------------------------------------------------------------------------
 
-data_path = "../results/concurrency-sweep/averaged_concurrency_sweep_results.csv"
+data_path = f"{RESULTS_DIR}concurrency-sweep/averaged_concurrency_sweep_results.csv"
 data = pd.read_csv(data_path)
 
-derived_metrics_path = "../results/concurrency-sweep/derived_metrics.csv"
+derived_metrics_path = f"{RESULTS_DIR}concurrency-sweep/derived_metrics.csv"
 derived = pd.read_csv(derived_metrics_path)
 derived = derived[derived['max_concurrency'] > 1]
 
-slo_data_path = "../results/concurrency-sweep/slo_attainment.csv"
+slo_data_path = f"{RESULTS_DIR}concurrency-sweep/slo_attainment.csv"
 slo_data = pd.read_csv(slo_data_path)
 slo_cols = {
         'responsive': 'pergpu_limit_responsive', 'acceptable': 'pergpu_limit_acceptable'
@@ -1005,7 +1004,6 @@ fig = plot_throughput_efficiency(
     subtitle_info=sub_a100_8b,
     paper=True
 )
-matplot2tikz.save("a100_efficiency_transport.tex")
 fig = plot_throughput_efficiency(
     v100_interconnect,
     derived,
@@ -1013,7 +1011,6 @@ fig = plot_throughput_efficiency(
     subtitle_info=sub_v100_8b,
     paper=True
 )
-matplot2tikz.save("v100_efficiency_transport.tex")
 
 fig = plot_normalized_throughput(a100_interconnect, data,
                                  title="a100 8b Normalized Throughput")
