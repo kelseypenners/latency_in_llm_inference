@@ -11,3 +11,4 @@ scratch*
 __pycache__/
 *.ipynb
 **/.DS_Store
+*.egg-info

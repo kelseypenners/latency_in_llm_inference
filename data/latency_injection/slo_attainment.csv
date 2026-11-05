@@ -1,0 +1,11 @@
+gpu_type,model_name,tp,interconnect,max_concurrency,ttft_responsive_P50,itl_responsive_P50,ttft_responsive_P95,ttft_acceptable_P95,itl_responsive_P95,itl_acceptable_P95,ttft_responsive_P90,ttft_acceptable_P90,itl_responsive_P90,itl_acceptable_P90,limit_responsive_95,limit_responsive_90,limit_acceptable_95,limit_acceptable_90
+a100,llama-2-13b,2,default,32,1458.0,1542,127.0,2500.0,898.0,2500,1546.0,2500.0,903.0,2500,127,903,2500,2500
+a100,llama-2-13b,2,default,512,,1410,,,252.0,2139,,,749.0,2500,0,0,0,0
+a100,llama-2-13b,4,default,32,2006.0,1658,714.0,2500.0,1022.0,2500,2074.0,2500.0,1025.0,2500,714,1025,2500,2500
+a100,llama-2-13b,4,default,512,,1355,,,,1823,,,338.0,2137,0,0,0,0
+a100,llama-3.1-8b,2,default,32,2500.0,2118,1005.0,2500.0,1334.0,2500,2500.0,2500.0,1339.0,2500,1005,1339,2500,2500
+a100,llama-3.1-8b,2,default,512,,1670,,,,1851,,,,1971,0,0,0,0
+a100,llama-3.1-8b,4,default,32,2500.0,2119,720.0,2500.0,1028.0,2500,2500.0,2500.0,1142.0,2500,720,1142,2500,2500
+a100,llama-3.1-8b,4,default,512,,1326,,,,1871,,,,2054,0,0,0,0
+a100,llama-3.2-1b,2,default,32,2500.0,2500,2254.0,2500.0,2500.0,2500,2456.0,2500.0,2500.0,2500,2254,2456,2500,2500
+a100,llama-3.2-1b,2,default,512,,2500,,,,2500,,,40.0,2500,0,0,0,0
