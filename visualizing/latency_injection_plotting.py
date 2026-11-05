@@ -4,7 +4,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from sklearn.linear_model import LinearRegression
-import matplot2tikz
 
 from utils.shared_config import *
 from utils.plotting import *
@@ -514,7 +513,6 @@ if __name__ == "__main__":
                                 per_link_delay=pld,
                                 ns=ns,
                                 relative=relative)
-    matplot2tikz.save("energycost_injection.tex")
     fig = plot_metric_vs_injection(injection_series_8b, power_df,
                                    y_metric="median_itl_ms",
                                    ylabel="Inter-token Latency (ms)",
@@ -522,7 +520,6 @@ if __name__ == "__main__":
                                    subtitle_info=sub_a100_8b,
                                    per_link_delay=pld,
                                    ns=ns)
-    matplot2tikz.save("itl_injection.tex")
     fig = plot_metric_vs_injection(injection_series_8b, power_df,
                                    y_metric="median_ttft_ms",
                                    ylabel="TTFT (ms)",
@@ -531,7 +528,6 @@ if __name__ == "__main__":
                                    per_link_delay=pld,
                                    ns=ns,
                                    subtitle_info=sub_a100_8b)
-    matplot2tikz.save("ttft_injection.tex")
     fig = plot_metric_vs_injection(injection_series_8b, power_df,
                                   y_metric="output_throughput",
                                   ylabel="Output Throughput (tokens/s)",
@@ -540,7 +536,6 @@ if __name__ == "__main__":
                                   per_link_delay=pld, 
                                   ns=ns,
                                   relative=relative,)
-    matplot2tikz.save("throughput_injection.tex")
 
 
     fig = plot_metric_vs_injection(injection_series_13b, power_df,

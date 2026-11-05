@@ -65,7 +65,7 @@ def plot_percent_energy_increase(
     return fig
 
 if __name__ == "__main__":
-    pass
+    # pass
     #%%
 
     # load data

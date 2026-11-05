@@ -27,8 +27,6 @@ SATURATION_POINTS = {
 combined_data = pd.read_csv(f"{RESULTS_DIR}concurrency-sweep/data_with_allreduce_stuff.csv")
 nccl_df = pd.read_csv(f"{RESULTS_DIR}interconnect_characterization/interconnect_characterization_frames.csv")
 
-combined_data.to_csv("data_with_allreduce_stuff_saturation_cap.csv", index=False)
-
 def plot_lat_vs_concurrency(series, df, title, subtitle_info=None):
 
     fig, ax = plt.subplots(figsize=(4.5, 3), layout="constrained")

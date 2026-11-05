@@ -1,7 +1,7 @@
 import numpy as np
 
 # results directory
-RESULTS_DIR = "../results/"
+RESULTS_DIR = "./data/"
 
 # model configs
 MODELS = {

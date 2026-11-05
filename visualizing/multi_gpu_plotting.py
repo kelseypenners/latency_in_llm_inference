@@ -24,7 +24,7 @@ derived = derived[derived['max_concurrency'] > 1]
 slo_data_path = f"{RESULTS_DIR}concurrency-sweep/slo_attainment.csv"
 slo_data = pd.read_csv(slo_data_path)
 slo_cols = {
-        'responsive': 'pergpu_limit_responsive', 'acceptable': 'pergpu_limit_acceptable'
+        'responsive': 'pergpu_limit_responsive_90', 'acceptable': 'pergpu_limit_acceptable_90'
     }
 slo_styles = {
     'responsive': ('*', 60, '--'), 'acceptable': ('D', 30, ':'),
